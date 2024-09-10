@@ -55,6 +55,7 @@ async-trait = "0.1.82"
 criterion = "0.5.1"
 clap = { version = "4.5.17", features = ["derive"] }
 plotters = "0.3.7"
+rand_distr = "0.4.3"
 
 
 [dev-dependencies]
