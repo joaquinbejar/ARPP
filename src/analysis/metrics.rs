@@ -7,11 +7,20 @@ use std::ops::Neg;
 use rust_decimal::{Decimal, MathematicalOps};
 use rust_decimal_macros::dec;
 use crate::arpp::liquidity_pool::LiquidityPool;
-use crate::simulation::monte_carlo::SimulationResult;
+use crate::simulation::result::SimulationResult;
 
+#[derive(Clone,Debug)]
+pub struct PoolMetricsStep {
+    pub price: Decimal,
+    pub p_ref: Decimal,
+    pub balances_a: Decimal,
+    pub balances_b: Decimal,
+    pub ratio: Decimal
+}
 
-#[derive(Clone)]
+#[derive(Clone, Default, Debug)]
 pub struct PoolMetrics {
+    pub steps: Vec<PoolMetricsStep>,
     pub price_volatility: Decimal,
     pub liquidity_depth: Decimal,
     pub trading_volume: Decimal,
@@ -19,34 +28,87 @@ pub struct PoolMetrics {
 }
 
 
-/// Calculates various metrics for a given liquidity pool compared to its initial state.
-///
-/// # Arguments
-///
-/// * `pool` - A reference to the current state of the `LiquidityPool`.
-/// * `initial_pool` - A reference to the initial state of the `LiquidityPool`.
-///
-/// # Returns
-///
-/// * `PoolMetrics` - A struct containing the calculated metrics:
-///     - `price_volatility`: The volatility of the pool's price.
-///     - `liquidity_depth`: The depth of liquidity in the pool.
-///     - `trading_volume`: The trading volume of the pool.
-///     - `impermanent_loss`: The impermanent loss of the pool.
-///
-pub fn calculate_pool_metrics(pool: &LiquidityPool, initial_pool: &LiquidityPool) -> PoolMetrics {
-    let (token_a, token_b) = pool.get_balances();
-    let (initial_a, initial_b) = initial_pool.get_balances();
-    let current_price = pool.get_price();
-    let initial_price = initial_pool.get_price();
+impl PoolMetrics {
+    pub fn new() -> Self {
+        Self {
+            steps: Vec::new(),
+            price_volatility: Decimal::ZERO,
+            liquidity_depth: Decimal::ZERO,
+            trading_volume: Decimal::ZERO,
+            impermanent_loss: Decimal::ZERO,
+        }
+    }
 
-    PoolMetrics {
-        price_volatility: calculate_price_volatility(current_price, initial_price),
-        liquidity_depth: calculate_liquidity_depth(token_a, token_b),
-        trading_volume: calculate_trading_volume(token_a, token_b, initial_a, initial_b),
-        impermanent_loss: calculate_impermanent_loss(token_a, token_b, initial_a, initial_b, current_price, initial_price),
+    pub fn get_prices(&self) -> Vec<Decimal> {
+        self.steps.iter().map(|step| step.price).collect()
+    }
+
+    pub fn get_p_ref(&self) -> Vec<Decimal> {
+        self.steps.iter().map(|step| step.p_ref).collect()
+    }
+
+    pub fn get_balances_a(&self) -> Vec<Decimal> {
+        self.steps.iter().map(|step| step.balances_a).collect()
+    }
+
+    pub fn get_balances_b(&self) -> Vec<Decimal> {
+        self.steps.iter().map(|step| step.balances_b).collect()
+    }
+
+    pub fn get_ratios(&self) -> Vec<Decimal> {
+        self.steps.iter().map(|step| step.ratio).collect()
+    }
+
+    /// Actualiza las métricas en cada paso de la simulación.
+    pub fn update_metrics(&mut self, current_step: &PoolMetricsStep, initial_step: &PoolMetricsStep) {
+        // Calcular volatilidad de precios entre este paso y el paso inicial
+        let price_vol = calculate_price_volatility(current_step.price, initial_step.price);
+        self.price_volatility += price_vol;
+
+        // Actualizar la profundidad de liquidez
+        self.liquidity_depth += calculate_liquidity_depth(current_step.balances_a, current_step.balances_b);
+
+        // Calcular volumen de trading entre este paso y el paso inicial
+        self.trading_volume += calculate_trading_volume(
+            current_step.balances_a, current_step.balances_b,
+            initial_step.balances_a, initial_step.balances_b
+        );
+
+        // Actualizar la pérdida impermanente
+        self.impermanent_loss += calculate_impermanent_loss(
+            current_step.balances_a, current_step.balances_b,
+            initial_step.balances_a, initial_step.balances_b,
+            current_step.price, initial_step.price
+        );
     }
 }
+
+pub fn accumulate_pool_metrics(
+    pool: &mut LiquidityPool,
+    metrics: &mut PoolMetrics,
+    initial_step: &PoolMetricsStep,
+) {
+    let (token_a, token_b) = pool.get_balances();
+    let current_price = pool.get_price();
+    let p_ref = pool.get_p_ref();
+    let ratio = token_b / token_a;
+
+    // Crear el paso actual (PoolMetricsStep)
+    let current_step = PoolMetricsStep {
+        price: current_price,
+        p_ref,
+        balances_a: token_a,
+        balances_b: token_b,
+        ratio,
+    };
+
+    // Insertar el nuevo paso en la lista de pasos
+    metrics.steps.push(current_step.clone());
+
+    // Actualizar las métricas acumuladas basadas en el paso actual
+    metrics.update_metrics(&current_step, initial_step);
+}
+
 
 /// Calculates the price volatility given the current price and initial price.
 ///
