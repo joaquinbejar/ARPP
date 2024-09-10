@@ -5,12 +5,13 @@
 ******************************************************************************/
 
 use crate::arpp::liquidity_pool::LiquidityPool;
-use crate::simulation::monte_carlo::{MonteCarloSimulation, run_timed_simulation};
 use crate::simulation::strategies::{RandomStrategy, MeanReversionStrategy, TradingStrategy};
 use clap::{Args, Subcommand};
 use rust_decimal::Decimal;
 use std::error::Error;
 use tracing::info;
+use crate::simulation::monte_carlo::MonteCarloSimulation;
+use crate::simulation::result::run_timed_simulation;
 
 /**
  * The `SimulationCommand` enum represents the different subcommands that can be used to run a simulation.
@@ -76,7 +77,6 @@ pub async fn run_simulation(cmd: &SimulationCommand) -> Result<(), Box<dyn Error
         },
         SimulationCommand::MeanReversion(args) => {
             let strategy = Box::new(MeanReversionStrategy::new(
-                args.target_price,
                 args.swap_threshold,
                 args.swap_amount,
             ));
@@ -106,7 +106,7 @@ async fn run_monte_carlo(
         Decimal::ONE,  // beta
     );
 
-    let mut simulation = MonteCarloSimulation::new(initial_pool, iterations, steps, strategy);
+    let mut simulation = MonteCarloSimulation::new(initial_pool, iterations, steps, strategy, Decimal::ONE, Decimal::ONE);
     let (result, duration) = run_timed_simulation(&mut simulation).await?;
 
     info!("Simulation completed in {:?}", duration);
