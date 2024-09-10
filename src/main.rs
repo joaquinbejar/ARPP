@@ -1,8 +1,8 @@
 /******************************************************************************
-    Author: Joaquín Béjar García
-    Email: jb@taunais.com 
-    Date: 10/9/24
- ******************************************************************************/
+   Author: Joaquín Béjar García
+   Email: jb@taunais.com
+   Date: 10/9/24
+******************************************************************************/
 
 fn main() {
     println!("ARPP-Rust: Anchored Reference Price Protocol Simulation");
