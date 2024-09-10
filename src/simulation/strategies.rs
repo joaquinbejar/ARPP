@@ -11,6 +11,7 @@ use rust_decimal::Decimal;
 use std::error::Error;
 use std::future::Future;
 use std::pin::Pin;
+use tracing::info;
 
 #[allow(clippy::type_complexity)]
 pub trait TradingStrategy: Send + Sync {
@@ -39,16 +40,26 @@ impl TradingStrategy for RandomStrategy {
     fn execute<'a>(
         &'a self,
         pool: &'a mut LiquidityPool,
-        _current_price: Decimal,
+        _: Decimal,
     ) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn Error>>> + 'a>> {
         Box::pin(async move {
             let mut rng = rand::thread_rng();
             if rng.gen::<f64>() < self.swap_probability {
+                let (balance_a, balance_b) = pool.get_balances();
+
+                let amount_a = (balance_a / Decimal::new(2, 0)).min(self.max_swap_amount);  // 50% del balance de A
+                let amount_b = (balance_b / Decimal::new(2, 0)).min(self.max_swap_amount);  // 50% del balance de B
+
                 let amount = Decimal::from_f64(rng.gen::<f64>()).unwrap() * self.max_swap_amount;
+
                 if rng.gen::<bool>() {
-                    pool.swap_a_to_b(amount)?;
+                    let swap_amount = amount.min(amount_a);
+                    info!("Swapping {} tokens from A to B", swap_amount);
+                    pool.swap_a_to_b(swap_amount)?;
                 } else {
-                    pool.swap_b_to_a(amount)?;
+                    let swap_amount = amount.min(amount_b);
+                    info!("Swapping {} tokens from B to A", swap_amount);
+                    pool.swap_b_to_a(swap_amount)?;
                 }
             }
             Ok(())
@@ -57,15 +68,13 @@ impl TradingStrategy for RandomStrategy {
 }
 
 pub struct MeanReversionStrategy {
-    target_price: Decimal,
     swap_threshold: Decimal,
     swap_amount: Decimal,
 }
 
 impl MeanReversionStrategy {
-    pub fn new(target_price: Decimal, swap_threshold: Decimal, swap_amount: Decimal) -> Self {
+    pub fn new(swap_threshold: Decimal, swap_amount: Decimal) -> Self {
         Self {
-            target_price,
             swap_threshold,
             swap_amount,
         }
@@ -79,9 +88,9 @@ impl TradingStrategy for MeanReversionStrategy {
         current_price: Decimal,
     ) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn Error>>> + 'a>> {
         Box::pin(async move {
-            if current_price > self.target_price + self.swap_threshold {
+            if current_price > pool.get_p_ref() + self.swap_threshold {
                 pool.swap_b_to_a(self.swap_amount)?;
-            } else if current_price < self.target_price - self.swap_threshold {
+            } else if current_price < pool.get_p_ref() - self.swap_threshold {
                 pool.swap_a_to_b(self.swap_amount)?;
             }
             Ok(())
@@ -144,15 +153,14 @@ mod tests_trading_strategy {
 
     #[tokio::test]
     async fn test_mean_reversion_strategy_creation() {
-        let strategy = MeanReversionStrategy::new(dec!(1), dec!(0.1), dec!(10));
-        assert_eq!(strategy.target_price, dec!(1));
+        let strategy = MeanReversionStrategy::new( dec!(0.1), dec!(10));
         assert_eq!(strategy.swap_threshold, dec!(0.1));
         assert_eq!(strategy.swap_amount, dec!(10));
     }
 
     #[tokio::test]
     async fn test_mean_reversion_strategy_above_threshold() {
-        let strategy = MeanReversionStrategy::new(dec!(1), dec!(0.1), dec!(10));
+        let strategy = MeanReversionStrategy::new( dec!(0.1), dec!(10));
         let pool = create_mock_pool();
         let mut pool_guard = pool.lock().await;
         let initial_balance = pool_guard.get_balances();
@@ -176,7 +184,7 @@ mod tests_trading_strategy {
 
     #[tokio::test]
     async fn test_mean_reversion_strategy_below_threshold() {
-        let strategy = MeanReversionStrategy::new(dec!(1), dec!(0.1), dec!(10));
+        let strategy = MeanReversionStrategy::new( dec!(0.1), dec!(10));
         let pool = create_mock_pool();
         let mut pool_guard = pool.lock().await;
         let initial_balance = pool_guard.get_balances();
@@ -200,7 +208,7 @@ mod tests_trading_strategy {
 
     #[tokio::test]
     async fn test_mean_reversion_strategy_within_threshold() {
-        let strategy = MeanReversionStrategy::new(dec!(1), dec!(0.1), dec!(10));
+        let strategy = MeanReversionStrategy::new( dec!(0.1), dec!(10));
         let pool = create_mock_pool();
         let mut pool_guard = pool.lock().await;
         let initial_balance = pool_guard.get_balances();
