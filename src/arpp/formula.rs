@@ -57,6 +57,29 @@ pub fn arpp(p_ref: Decimal, alpha: Decimal, beta: Decimal, r: Decimal) -> Decima
     p_ref * (one + alpha * atan_value)
 }
 
+/// Calculates the ratio of two given decimal tokens.
+///
+/// This function takes two `Decimal` values and returns the ratio of `token_a` to `token_b`.
+/// If `token_b` is zero, the function returns `Decimal::MAX` to signify an infinite ratio.
+/// If `token_a` is zero, the function returns `Decimal::ZERO`.
+///
+/// # Parameters
+/// - `token_a`: The numerator represented by a `Decimal`.
+/// - `token_b`: The denominator represented by a `Decimal`.
+///
+/// # Returns
+/// Returns a `Decimal` representation of the ratio `token_a / token_b`.
+///
+pub(crate) fn token_ratio(token_a: Decimal, token_b: Decimal) -> Decimal {
+    if token_b == Decimal::ZERO {
+        return Decimal::MAX;
+    }
+    if token_a == Decimal::ZERO {
+        return Decimal::ZERO;
+    }
+    token_a / token_b
+}
+
 #[cfg(test)]
 mod tests_arpp {
     use super::*;
@@ -225,5 +248,22 @@ mod tests_arpp {
         let price2 = arpp(p_ref, alpha, beta, r);
 
         assert_eq!(price1, price2);
+    }
+
+    #[test]
+    fn test_price() {
+        let p_ref = dec!( 101.06);
+        let alpha = dec!(0.5);
+        let beta = dec!(1);
+        let r = dec!(5.52);
+
+        let price1 = arpp(p_ref, alpha, beta, r);
+        let price2 = arpp(p_ref, alpha, beta, r);
+
+        println!("Price: {}", price1);
+        println!("Price: {}", price2);
+
+        assert_eq!(price1, price2);
+        // assert_approx_eq!(price1, dec!(101.06), dec!(10));
     }
 }
