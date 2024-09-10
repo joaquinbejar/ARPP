@@ -1,15 +1,23 @@
 /******************************************************************************
-    Author: Joaquín Béjar García
-    Email: jb@taunais.com 
-    Date: 10/9/24
- ******************************************************************************/
+   Author: Joaquín Béjar García
+   Email: jb@taunais.com
+   Date: 10/9/24
+******************************************************************************/
 
 use crate::arpp::formula::arpp;
 use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
 use std::error::Error;
 
-#[derive(Debug)]
+/// The `LiquidityPool` struct represents a liquidity pool in a decentralized finance (DeFi) context.
+///
+/// # Fields
+/// - `token_a` (Decimal): The amount of the first token in the pool.
+/// - `token_b` (Decimal): The amount of the second token in the pool.
+/// - `p_ref` (Decimal): The reference price for the pool.
+/// - `alpha` (Decimal): A parameter that could represent a weight or coefficient in a specific formula or algorithm.
+/// - `beta` (Decimal): Another parameter that could represent a weight or coefficient in a different formula or algorithm.
+///
+#[derive(Debug, Clone)]
 pub struct LiquidityPool {
     token_a: Decimal,
     token_b: Decimal,
@@ -19,7 +27,13 @@ pub struct LiquidityPool {
 }
 
 impl LiquidityPool {
-    pub fn new(token_a: Decimal, token_b: Decimal, p_ref: Decimal, alpha: Decimal, beta: Decimal) -> Self {
+    pub fn new(
+        token_a: Decimal,
+        token_b: Decimal,
+        p_ref: Decimal,
+        alpha: Decimal,
+        beta: Decimal,
+    ) -> Self {
         Self {
             token_a,
             token_b,
@@ -29,7 +43,31 @@ impl LiquidityPool {
         }
     }
 
-    pub fn add_liquidity(&mut self, amount_a: Decimal, amount_b: Decimal) -> Result<(), Box<dyn Error>> {
+    /// Adds liquidity to the liquidity pool by increasing the amounts of tokens A and B.
+    ///
+    /// The function takes two `Decimal` values representing the amounts of tokens A and B
+    /// to be added to the liquidity pool. It updates the state of `self` to reflect the
+    /// added amounts.
+    ///
+    /// # Arguments
+    ///
+    /// * `amount_a` - The amount of token A to be added. Must be greater than zero.
+    /// * `amount_b` - The amount of token B to be added. Must be greater than zero.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), Box<dyn Error>>` - Returns `Ok(())` if the operation is successful.
+    ///   Returns an error if either `amount_a` or `amount_b` is less than or equal to zero.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if either `amount_a` or `amount_b` is not positive.
+    ///
+    pub fn add_liquidity(
+        &mut self,
+        amount_a: Decimal,
+        amount_b: Decimal,
+    ) -> Result<(), Box<dyn Error>> {
         if amount_a <= Decimal::ZERO || amount_b <= Decimal::ZERO {
             return Err("Amounts must be positive".into());
         }
@@ -38,7 +76,11 @@ impl LiquidityPool {
         Ok(())
     }
 
-    pub fn remove_liquidity(&mut self, amount_a: Decimal, amount_b: Decimal) -> Result<(), Box<dyn Error>> {
+    pub fn remove_liquidity(
+        &mut self,
+        amount_a: Decimal,
+        amount_b: Decimal,
+    ) -> Result<(), Box<dyn Error>> {
         if amount_a <= Decimal::ZERO || amount_b <= Decimal::ZERO {
             return Err("Amounts must be positive".into());
         }
@@ -106,8 +148,9 @@ impl LiquidityPool {
 
 #[cfg(test)]
 mod tests_liquidity_pool {
-    use tracing::debug;
     use super::*;
+    use rust_decimal_macros::dec;
+    use tracing::debug;
 
     // Helper function to create a standard pool for testing
     fn create_standard_pool() -> LiquidityPool {
@@ -189,16 +232,30 @@ mod tests_liquidity_pool {
         assert!(token_b < initial_balances.1, "Token B should decrease");
 
         // Verify that the amount of B received equals the amount of A swapped
-        assert_eq!(amount_b, amount_a_to_swap, "Amount of B should equal the amount of A swapped");
+        assert_eq!(
+            amount_b, amount_a_to_swap,
+            "Amount of B should equal the amount of A swapped"
+        );
 
         // Check that the changes in balances are consistent
-        assert_eq!(token_a - initial_balances.0, amount_a_to_swap, "Increase in A should equal amount swapped");
-        assert_eq!(initial_balances.1 - token_b, amount_b, "Decrease in B should equal amount received");
+        assert_eq!(
+            token_a - initial_balances.0,
+            amount_a_to_swap,
+            "Increase in A should equal amount swapped"
+        );
+        assert_eq!(
+            initial_balances.1 - token_b,
+            amount_b,
+            "Decrease in B should equal amount received"
+        );
 
         // Verify that the sum of tokens remains constant (with a small margin for rounding errors)
         let initial_sum = initial_balances.0 + initial_balances.1;
         let final_sum = token_a + token_b;
-        assert!((initial_sum - final_sum).abs() < dec!(0.000001), "Total token amount should remain constant");
+        assert!(
+            (initial_sum - final_sum).abs() < dec!(0.000001),
+            "Total token amount should remain constant"
+        );
 
         let swap_rate = amount_b / amount_a_to_swap;
         debug!("Swap rate (B/A): {}", swap_rate);
@@ -224,16 +281,30 @@ mod tests_liquidity_pool {
         assert!(token_b > initial_balances.1, "Token B should increase");
 
         // We verify that the amount of A received is equal to the amount of B delivered.
-        assert_eq!(amount_a, amount_b_to_swap, "Amount of A should equal the amount of B swapped");
+        assert_eq!(
+            amount_a, amount_b_to_swap,
+            "Amount of A should equal the amount of B swapped"
+        );
 
         // We verify that the changes in the balances are consistent
-        assert_eq!(initial_balances.0 - token_a, amount_a, "Decrease in A should equal amount received");
-        assert_eq!(token_b - initial_balances.1, amount_b_to_swap, "Increase in B should equal amount swapped");
+        assert_eq!(
+            initial_balances.0 - token_a,
+            amount_a,
+            "Decrease in A should equal amount received"
+        );
+        assert_eq!(
+            token_b - initial_balances.1,
+            amount_b_to_swap,
+            "Increase in B should equal amount swapped"
+        );
 
         // We verify that the sum of the tokens remains constant (with a small margin of error for rounding).
         let initial_sum = initial_balances.0 + initial_balances.1;
         let final_sum = token_a + token_b;
-        assert!((initial_sum - final_sum).abs() < dec!(0.000001), "Total token amount should remain constant");
+        assert!(
+            (initial_sum - final_sum).abs() < dec!(0.000001),
+            "Total token amount should remain constant"
+        );
     }
 
     #[test]
@@ -295,13 +366,19 @@ mod tests_liquidity_pool {
     }
 }
 
-
 #[cfg(test)]
 mod tests_liquidity_pool_bis {
-    use tracing::debug;
     use super::*;
+    use rust_decimal_macros::dec;
+    use tracing::debug;
 
-    fn create_custom_pool(token_a: Decimal, token_b: Decimal, p_ref: Decimal, alpha: Decimal, beta: Decimal) -> LiquidityPool {
+    fn create_custom_pool(
+        token_a: Decimal,
+        token_b: Decimal,
+        p_ref: Decimal,
+        alpha: Decimal,
+        beta: Decimal,
+    ) -> LiquidityPool {
         LiquidityPool::new(token_a, token_b, p_ref, alpha, beta)
     }
 
@@ -328,15 +405,24 @@ mod tests_liquidity_pool_bis {
         debug!("Price for extreme imbalance: {}", price);
 
         // Instead of asserting a specific price, let's check if it's significantly higher than 1
-        assert!(price > dec!(1), "Price should be higher than 1 for extreme imbalance");
-        assert!(price < dec!(1000000), "Price should be less than the ratio of token balances");
+        assert!(
+            price > dec!(1),
+            "Price should be higher than 1 for extreme imbalance"
+        );
+        assert!(
+            price < dec!(1000000),
+            "Price should be less than the ratio of token balances"
+        );
 
         // Calculate and print the ratio of token balances
         let balance_ratio = dec!(1000000) / dec!(1);
         debug!("Ratio of token balances: {}", balance_ratio);
 
         // Compare the price to the balance ratio
-        debug!("Price as percentage of balance ratio: {}%", (price / balance_ratio) * dec!(100));
+        debug!(
+            "Price as percentage of balance ratio: {}%",
+            (price / balance_ratio) * dec!(100)
+        );
     }
 
     #[test]
@@ -360,8 +446,14 @@ mod tests_liquidity_pool_bis {
         debug!("Effective exchange rate: {}", exchange_rate);
 
         // Assert that the exchange rate is close to 1, but slightly less
-        assert!(exchange_rate <= dec!(1), "Exchange rate should not exceed 1");
-        assert!(exchange_rate > dec!(0.9), "Exchange rate should not be too low");
+        assert!(
+            exchange_rate <= dec!(1),
+            "Exchange rate should not exceed 1"
+        );
+        assert!(
+            exchange_rate > dec!(0.9),
+            "Exchange rate should not be too low"
+        );
 
         // Print pool balances after swap
         let (balance_a, balance_b) = pool.get_balances();
@@ -399,11 +491,20 @@ mod tests_liquidity_pool_bis {
         debug!("Effective exchange rate: {}", exchange_rate);
 
         // Assert that the exchange rate is close to 1, but may be slightly different
-        assert!(exchange_rate > dec!(0.9), "Exchange rate should not be too low");
-        assert!(exchange_rate < dec!(1.1), "Exchange rate should not be too high");
+        assert!(
+            exchange_rate > dec!(0.9),
+            "Exchange rate should not be too low"
+        );
+        assert!(
+            exchange_rate < dec!(1.1),
+            "Exchange rate should not be too high"
+        );
 
         // Assert that the price has changed due to the high beta
-        assert!(pool.get_price() != dec!(1), "Price should change with high beta");
+        assert!(
+            pool.get_price() != dec!(1),
+            "Price should change with high beta"
+        );
     }
 
     #[test]
@@ -428,7 +529,8 @@ mod tests_liquidity_pool_bis {
 
     #[test]
     fn test_swap_large_amount() {
-        let mut pool = create_custom_pool(dec!(1000000), dec!(1000000), dec!(1), dec!(0.5), dec!(1));
+        let mut pool =
+            create_custom_pool(dec!(1000000), dec!(1000000), dec!(1), dec!(0.5), dec!(1));
         let result = pool.swap_a_to_b(dec!(500000));
         assert!(result.is_ok());
     }
@@ -448,7 +550,8 @@ mod tests_liquidity_pool_bis {
 
     #[test]
     fn test_remove_large_liquidity() {
-        let mut pool = create_custom_pool(dec!(1000000), dec!(1000000), dec!(1), dec!(0.5), dec!(1));
+        let mut pool =
+            create_custom_pool(dec!(1000000), dec!(1000000), dec!(1), dec!(0.5), dec!(1));
         assert!(pool.remove_liquidity(dec!(999999), dec!(999999)).is_ok());
     }
 
@@ -503,10 +606,11 @@ mod tests_liquidity_pool_bis {
     }
 
     #[test]
-    #[should_panic]
     fn test_swap_more_than_balance() {
         let mut pool = create_custom_pool(dec!(1000), dec!(1000), dec!(1), dec!(0.5), dec!(1));
-        pool.swap_a_to_b(dec!(1001)).unwrap();
+        let result = pool.swap_a_to_b(dec!(1001));
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "Insufficient liquidity");
     }
 
     #[test]
@@ -534,12 +638,15 @@ mod tests_liquidity_pool_bis {
     fn test_add_remove_tiny_liquidity() {
         let mut pool = create_custom_pool(dec!(1000), dec!(1000), dec!(1), dec!(0.5), dec!(1));
         assert!(pool.add_liquidity(dec!(0.000001), dec!(0.000001)).is_ok());
-        assert!(pool.remove_liquidity(dec!(0.000001), dec!(0.000001)).is_ok());
+        assert!(pool
+            .remove_liquidity(dec!(0.000001), dec!(0.000001))
+            .is_ok());
     }
 
     #[test]
     fn test_swap_with_extreme_price_reference() {
-        let mut pool = create_custom_pool(dec!(1000), dec!(1000), dec!(1000000), dec!(0.5), dec!(1));
+        let mut pool =
+            create_custom_pool(dec!(1000), dec!(1000), dec!(1000000), dec!(0.5), dec!(1));
 
         debug!("Initial state:");
         debug!("Balances: {:?}", pool.get_balances());
@@ -550,7 +657,10 @@ mod tests_liquidity_pool_bis {
         let result = pool.swap_a_to_b(amount_to_swap);
         debug!("Large A to B swap result: {:?}", result);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().to_string(), "Insufficient liquidity for swap");
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Insufficient liquidity for swap"
+        );
 
         // Test small A to B swap (should succeed)
         let small_amount = dec!(0.000001);
@@ -559,7 +669,11 @@ mod tests_liquidity_pool_bis {
         assert!(small_swap_result.is_ok());
         let received = small_swap_result.unwrap();
         debug!("Received from small A to B swap: {}", received);
-        assert_eq!(received, dec!(1), "Should receive exactly 1 token B for 0.000001 token A");
+        assert_eq!(
+            received,
+            dec!(1),
+            "Should receive exactly 1 token B for 0.000001 token A"
+        );
 
         // Test B to A swap (should succeed but with very small return)
         let b_to_a_result = pool.swap_b_to_a(dec!(1));
@@ -567,7 +681,10 @@ mod tests_liquidity_pool_bis {
         assert!(b_to_a_result.is_ok());
         let received_a = b_to_a_result.unwrap();
         debug!("Received from B to A swap: {}", received_a);
-        assert!(received_a < dec!(0.000002), "Should receive very small amount of A for 1 token B");
+        assert!(
+            received_a < dec!(0.000002),
+            "Should receive very small amount of A for 1 token B"
+        );
 
         // Verify final state
         let (final_a, final_b) = pool.get_balances();
@@ -577,9 +694,19 @@ mod tests_liquidity_pool_bis {
         debug!("Price: {}", final_price);
 
         // The changes are extremely small due to the extreme price
-        assert!((final_a - dec!(1000)).abs() < dec!(0.000001), "A balance should change very little");
-        assert!((final_b - dec!(1000)).abs() < dec!(0.000001), "B balance should change very little");
-        assert_ne!(final_price, dec!(1000000), "Price should change slightly after swaps");
+        assert!(
+            (final_a - dec!(1000)).abs() < dec!(0.000001),
+            "A balance should change very little"
+        );
+        assert!(
+            (final_b - dec!(1000)).abs() < dec!(0.000001),
+            "B balance should change very little"
+        );
+        assert_ne!(
+            final_price,
+            dec!(1000000),
+            "Price should change slightly after swaps"
+        );
 
         // Additional checks to understand the behavior
         debug!("Change in A balance: {}", final_a - dec!(1000));
