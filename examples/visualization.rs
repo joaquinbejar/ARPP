@@ -19,18 +19,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Decimal::new(105, 2),  // 1.05
         Decimal::new(103, 2),  // 1.03
     ];
-    create_price_chart(&prices, "draws/price_chart.png")?;
+    let p_ref = vec![
+        Decimal::new(100, 2),  // 1.00
+        Decimal::new(102, 2),  // 1.02
+        Decimal::new(98, 2),   // 0.98
+        Decimal::new(105, 2),  // 1.05
+        Decimal::new(103, 2),  // 1.03
+    ];
+    create_price_chart(&prices, &p_ref,"draws/price_chart.png")?;
     info!("Price chart created: draws/price_chart.png");
 
     // Ejemplo para create_metrics_chart
     let metrics = vec![
         PoolMetrics {
+            steps: vec![],
             price_volatility: Decimal::new(5, 3),    // 0.005
             liquidity_depth: Decimal::new(1000, 0),  // 1000
             trading_volume: Decimal::new(5000, 0),   // 5000
             impermanent_loss: Decimal::new(-2, 2),   // -0.02
         },
         PoolMetrics {
+            steps: vec![],
             price_volatility: Decimal::new(7, 3),    // 0.007
             liquidity_depth: Decimal::new(1100, 0),  // 1100
             trading_volume: Decimal::new(5500, 0),   // 5500
