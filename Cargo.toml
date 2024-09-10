@@ -1,5 +1,5 @@
 [package]
-name = "ARPP"
+name = "arpp"
 version = "0.1.0"
 edition = "2021"
 authors = ["Joaquin Bejar <jb@taunais.com>"]
@@ -48,6 +48,12 @@ anyhow = "1.0.87"
 rust_decimal = { version = "1.36.0", features = ["maths"] }
 rust_decimal_macros = "1.36.0"
 libm = "0.2.8"
+futures = "0.3.30"
+num_cpus = "1.16.0"
+rand = "0.8.5"
+async-trait = "0.1.82"
+criterion = "0.5.1"
+
 
 [dev-dependencies]
 assert-json-diff = "2.0.2"
@@ -63,7 +69,7 @@ name = "tests"
 path = "tests/unit/mod.rs"
 
 [lib]
-name = "ARPP"
+name = "arpp"
 path = "src/lib.rs"
 
 [[bench]]
