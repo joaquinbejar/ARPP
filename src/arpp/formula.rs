@@ -37,6 +37,7 @@ use rust_decimal::Decimal;
 ///
 /// ```
 /// use rust_decimal::Decimal;
+/// use tracing::info;
 /// use arpp::arpp::formula::arpp;
 ///
 /// let p_ref = Decimal::new(100, 0);
@@ -45,7 +46,7 @@ use rust_decimal::Decimal;
 /// let r = Decimal::new(10, 1);    // 1.0
 ///
 /// let result = arpp(p_ref, alpha, beta, r);
-/// println!("ARPP result: {}", result);
+/// info!("ARPP result: {}", result);
 /// ```
 pub fn arpp(p_ref: Decimal, alpha: Decimal, beta: Decimal, r: Decimal) -> Decimal {
     let one = Decimal::ONE;
