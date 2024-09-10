@@ -1,12 +1,11 @@
 /******************************************************************************
-    Author: Joaquín Béjar García
-    Email: jb@taunais.com
-    Date: 10/9/24
- ******************************************************************************/
+   Author: Joaquín Béjar García
+   Email: jb@taunais.com
+   Date: 10/9/24
+******************************************************************************/
 
-use rust_decimal::Decimal;
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
-use rust_decimal_macros::dec;
+use rust_decimal::Decimal;
 
 /// Computes the adjusted reference pressure (ARPP).
 ///
@@ -38,7 +37,7 @@ use rust_decimal_macros::dec;
 ///
 /// ```
 /// use rust_decimal::Decimal;
-/// use ARPP::arpp::formula::arpp;
+/// use arpp::arpp::formula::arpp;
 ///
 /// let p_ref = Decimal::new(100, 0);
 /// let alpha = Decimal::new(2, 1); // 0.2
@@ -56,11 +55,13 @@ pub fn arpp(p_ref: Decimal, alpha: Decimal, beta: Decimal, r: Decimal) -> Decima
     let atan_value = Decimal::from_f64(libm::atan(angle_f64)).unwrap();
     p_ref * (one + alpha * atan_value)
 }
+
 #[cfg(test)]
 mod tests_arpp {
-    use assert_approx_eq::assert_approx_eq;
-    use tracing::debug;
     use super::*;
+    use assert_approx_eq::assert_approx_eq;
+    use rust_decimal_macros::dec;
+    use tracing::debug;
 
     #[test]
     fn test_equilibrium() {
@@ -164,7 +165,7 @@ mod tests_arpp {
 
         assert!(price > p_ref);
         // Ajustamos esta aserción basándonos en el resultado observado
-        assert!(price < p_ref * dec!(10));  // Ajusta este factor según sea necesario
+        assert!(price < p_ref * dec!(10)); // Ajusta este factor según sea necesario
 
         // Añadimos una verificación adicional para asegurar que el precio no es absurdamente alto
         assert!(price / p_ref < dec!(100));
@@ -182,8 +183,8 @@ mod tests_arpp {
         debug!("Ratio to p_ref: {}", price / p_ref);
 
         assert!(price > p_ref);
-        assert!(price < p_ref * dec!(3)); 
-        assert!(price > p_ref * dec!(2)); 
+        assert!(price < p_ref * dec!(3));
+        assert!(price > p_ref * dec!(2));
 
         let ratio_to_p_ref = price / p_ref;
         assert!((ratio_to_p_ref - dec!(2.55)).abs() < dec!(0.01));
