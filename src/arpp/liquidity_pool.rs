@@ -4,9 +4,11 @@
    Date: 10/9/24
 ******************************************************************************/
 
-use crate::arpp::formula::arpp;
+use crate::arpp::formula::{arpp, token_ratio};
 use rust_decimal::Decimal;
 use std::error::Error;
+use tracing::{info, trace};
+use crate::simulation::random_walk::random_walk_price;
 
 /// The `LiquidityPool` struct represents a liquidity pool in a decentralized finance (DeFi) context.
 ///
@@ -137,58 +139,43 @@ impl LiquidityPool {
             return Err("Amount must be positive".into());
         }
         if amount_a > self.token_a {
-            return Err("Insufficient liquidity".into());
+            return Err("Insufficient liquidity of A".into());
         }
 
-        let r = self.token_b / self.token_a;
-        let price = arpp(self.p_ref, self.alpha, self.beta, r);
-        let amount_b = amount_a * price;
-
-        if amount_b > self.token_b {
-            return Err("Insufficient liquidity for swap".into());
-        }
-
+        let initial_k = self.token_a * self.token_b;
         self.token_a += amount_a;
-        self.token_b -= amount_b;
+
+        // Calculate new token_b to maintain k
+        self.token_b = initial_k / self.token_a;
+
+        let amount_b = self.token_b - (initial_k / (self.token_a - amount_a));
+
+        if amount_b <= Decimal::ZERO {
+            return Err("Insufficient liquidity to perform swap".into());
+        }
 
         Ok(amount_b)
     }
 
-    /// Swaps a specified amount of token B for token A.
-    ///
-    /// This function performs a swap of `amount_b` of token B for an equivalent amount of token A.
-    /// It performs several checks to ensure that the swap is valid and possible given the contract's
-    /// current state and available liquidity.
-    ///
-    /// # Parameters
-    /// - `amount_b`: The amount of token B to be swapped.
-    ///
-    /// # Returns
-    /// - `Result<Decimal, Box<dyn Error>>`: Returns the amount of token A received on a successful swap or an error
-    ///
-    /// # Errors
-    /// - Returns an error if `amount_b` is less than or equal to zero.
-    /// - Returns an error if there is insufficient liquidity of token B.
-    /// - Returns an error if there is insufficient liquidity of token A for the swap.
-    ///
     pub fn swap_b_to_a(&mut self, amount_b: Decimal) -> Result<Decimal, Box<dyn Error>> {
         if amount_b <= Decimal::ZERO {
             return Err("Amount must be positive".into());
         }
         if amount_b > self.token_b {
-            return Err("Insufficient liquidity".into());
+            return Err("Insufficient liquidity of B".into());
         }
 
-        let r = self.token_a / self.token_b;
-        let price = arpp(self.p_ref, self.alpha, self.beta, r);
-        let amount_a = amount_b / price;
-
-        if amount_a > self.token_a {
-            return Err("Insufficient liquidity for swap".into());
-        }
-
+        let initial_k = self.token_a * self.token_b;
         self.token_b += amount_b;
-        self.token_a -= amount_a;
+
+        // Calculate new token_a to maintain k
+        self.token_a = initial_k / self.token_b;
+
+        let amount_a = self.token_a - (initial_k / (self.token_b - amount_b));
+
+        if amount_a <= Decimal::ZERO {
+            return Err("Insufficient liquidity to perform swap".into());
+        }
 
         Ok(amount_a)
     }
@@ -200,9 +187,19 @@ impl LiquidityPool {
     ///
     /// A `Decimal` representing the calculated price.
     ///
-    pub fn get_price(&self) -> Decimal {
-        let r = self.token_b / self.token_a;
-        arpp(self.p_ref, self.alpha, self.beta, r)
+    pub fn get_price(&mut self) -> Decimal {
+        let r = token_ratio(self.token_a,  self.token_b);
+        let price = arpp(self.p_ref, self.alpha, self.beta, r);
+        trace!("P_ref: {:.2}, Price: {:.2}, Alpha: {:}, Beta: {}, R: {:.2}", self.p_ref, price, self.alpha, self.beta, r);
+        price
+    }
+
+    pub(crate) fn set_p_ref(&mut self, alpha:Decimal, beta:Decimal) {
+        self.p_ref = random_walk_price(self.p_ref, alpha, beta);
+    }
+
+    pub(crate) fn get_p_ref(&mut self) -> Decimal {
+        self.p_ref
     }
 
     /// Returns the current balances of two tokens.
@@ -239,7 +236,7 @@ mod tests_liquidity_pool {
 
     #[test]
     fn test_new_pool_creation() {
-        let pool = create_standard_pool();
+        let mut pool = create_standard_pool();
         assert_eq!(pool.get_balances(), (dec!(1000), dec!(1000)));
         assert_eq!(pool.get_price(), dec!(1));
     }
@@ -410,7 +407,7 @@ mod tests_liquidity_pool {
 
     #[test]
     fn test_get_price() {
-        let pool = create_standard_pool();
+        let mut pool = create_standard_pool();
         assert!((pool.get_price() - dec!(1)).abs() < dec!(0.000001));
     }
 
@@ -418,9 +415,9 @@ mod tests_liquidity_pool {
     fn test_price_changes_after_swap() {
         let mut pool = create_standard_pool();
         let initial_price = pool.get_price();
-        pool.swap_a_to_b(dec!(100)).unwrap();
+        pool.swap_a_to_b(dec!(1)).unwrap();
         let price_after_swap = pool.get_price();
-        assert!(price_after_swap < initial_price);
+        assert!(price_after_swap > initial_price);
     }
 
     #[test]
@@ -464,21 +461,21 @@ mod tests_liquidity_pool_bis {
 
     #[test]
     fn test_standard_pool() {
-        let pool = create_custom_pool(dec!(1000), dec!(1000), dec!(1), dec!(0.5), dec!(1));
+        let mut pool = create_custom_pool(dec!(1000), dec!(1000), dec!(1), dec!(0.5), dec!(1));
         assert_eq!(pool.get_balances(), (dec!(1000), dec!(1000)));
         assert_eq!(pool.get_price(), dec!(1));
     }
 
     #[test]
     fn test_unbalanced_pool() {
-        let pool = create_custom_pool(dec!(500), dec!(2000), dec!(1), dec!(0.5), dec!(1));
+        let mut pool = create_custom_pool(dec!(500), dec!(2000), dec!(1), dec!(0.5), dec!(1));
         assert_eq!(pool.get_balances(), (dec!(500), dec!(2000)));
-        assert!(pool.get_price() > dec!(1));
+        assert!(pool.get_price() < dec!(1));
     }
 
     #[test]
     fn test_extreme_imbalance() {
-        let pool = create_custom_pool(dec!(1), dec!(1000000), dec!(1), dec!(0.5), dec!(1));
+        let mut pool = create_custom_pool(dec!(1), dec!(1000000), dec!(1), dec!(0.5), dec!(1));
         assert_eq!(pool.get_balances(), (dec!(1), dec!(1000000)));
 
         let price = pool.get_price();
@@ -486,8 +483,8 @@ mod tests_liquidity_pool_bis {
 
         // Instead of asserting a specific price, let's check if it's significantly higher than 1
         assert!(
-            price > dec!(1),
-            "Price should be higher than 1 for extreme imbalance"
+            price < dec!(1),
+            "Price should be lower than 1 for extreme imbalance"
         );
         assert!(
             price < dec!(1000000),
@@ -597,13 +594,13 @@ mod tests_liquidity_pool_bis {
 
     #[test]
     fn test_high_p_ref() {
-        let pool = create_custom_pool(dec!(1000), dec!(1000), dec!(1000), dec!(0.5), dec!(1));
+        let mut pool = create_custom_pool(dec!(1000), dec!(1000), dec!(1000), dec!(0.5), dec!(1));
         assert_eq!(pool.get_price(), dec!(1000));
     }
 
     #[test]
     fn test_low_p_ref() {
-        let pool = create_custom_pool(dec!(1000), dec!(1000), dec!(0.001), dec!(0.5), dec!(1));
+        let mut pool = create_custom_pool(dec!(1000), dec!(1000), dec!(0.001), dec!(0.5), dec!(1));
         assert_eq!(pool.get_price(), dec!(0.001));
     }
 
@@ -661,7 +658,7 @@ mod tests_liquidity_pool_bis {
 
     #[test]
     fn test_extreme_alpha_beta_combination() {
-        let pool = create_custom_pool(dec!(1000), dec!(1000), dec!(1), dec!(0.99), dec!(100));
+        let mut pool = create_custom_pool(dec!(1000), dec!(1000), dec!(1), dec!(0.99), dec!(100));
         assert!(pool.get_price() > dec!(0.9) && pool.get_price() < dec!(1.1));
     }
 
