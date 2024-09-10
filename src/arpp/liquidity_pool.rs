@@ -76,6 +76,24 @@ impl LiquidityPool {
         Ok(())
     }
 
+    /// Removes liquidity from the pool.
+    ///
+    /// # Parameters
+    ///
+    /// - `amount_a`: The amount of token A to remove. Must be a positive value.
+    /// - `amount_b`: The amount of token B to remove. Must be a positive value.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating the success (`Ok`) or failure (`Err`) of the operation.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in the following cases:
+    ///
+    /// - If `amount_a` or `amount_b` are non-positive.
+    /// - If the pool does not have sufficient liquidity to meet the requested amounts.
+    ///
     pub fn remove_liquidity(
         &mut self,
         amount_a: Decimal,
@@ -92,6 +110,28 @@ impl LiquidityPool {
         Ok(())
     }
 
+    /// Swaps a specified amount of token A to token B based on a given price mechanism.
+    ///
+    /// # Parameters
+    ///
+    /// - `amount_a`: The amount of token A to be swapped to token B. Must be a positive value greater
+    /// than zero and should not exceed the available `token_a` liquidity.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(Decimal)`: The resulting amount of token B received in the swap.
+    /// - `Err(Box<dyn Error>)`: An error indicating one of the following issues:
+    ///   - The specified amount of token A is non-positive.
+    ///   - Insufficient liquidity of token A.
+    ///   - Insufficient liquidity of token B for the swap.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// - `amount_a` is less than or equal to zero.
+    /// - `amount_a` is greater than the available liquidity of `token_a`.
+    /// - The resulting amount of token B for the swap exceeds the available liquidity of `token_b`.
+    ///
     pub fn swap_a_to_b(&mut self, amount_a: Decimal) -> Result<Decimal, Box<dyn Error>> {
         if amount_a <= Decimal::ZERO {
             return Err("Amount must be positive".into());
@@ -114,6 +154,23 @@ impl LiquidityPool {
         Ok(amount_b)
     }
 
+    /// Swaps a specified amount of token B for token A.
+    ///
+    /// This function performs a swap of `amount_b` of token B for an equivalent amount of token A.
+    /// It performs several checks to ensure that the swap is valid and possible given the contract's
+    /// current state and available liquidity.
+    ///
+    /// # Parameters
+    /// - `amount_b`: The amount of token B to be swapped.
+    ///
+    /// # Returns
+    /// - `Result<Decimal, Box<dyn Error>>`: Returns the amount of token A received on a successful swap or an error
+    ///
+    /// # Errors
+    /// - Returns an error if `amount_b` is less than or equal to zero.
+    /// - Returns an error if there is insufficient liquidity of token B.
+    /// - Returns an error if there is insufficient liquidity of token A for the swap.
+    ///
     pub fn swap_b_to_a(&mut self, amount_b: Decimal) -> Result<Decimal, Box<dyn Error>> {
         if amount_b <= Decimal::ZERO {
             return Err("Amount must be positive".into());
@@ -136,11 +193,34 @@ impl LiquidityPool {
         Ok(amount_a)
     }
 
+    /// Calculates the price based on the ratio of `token_b` to `token_a`
+    /// and adjusts it using the parameters `p_ref`, `alpha`, and `beta`.
+    ///
+    /// # Returns
+    ///
+    /// A `Decimal` representing the calculated price.
+    ///
     pub fn get_price(&self) -> Decimal {
         let r = self.token_b / self.token_a;
         arpp(self.p_ref, self.alpha, self.beta, r)
     }
 
+    /// Returns the current balances of two tokens.
+    ///
+    /// This function retrieves the balances of `token_a` and `token_b` encapsulated
+    /// within the structure.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing two `Decimal` values:
+    /// - The first value corresponds to the balance of `token_a`.
+    /// - The second value corresponds to the balance of `token_b`.
+    ///
+    /// # Usage
+    ///
+    /// This function can be used to check the current balance of two tokens stored
+    /// within an instance of the structure. It returns a tuple where the first element
+    /// is the balance of `token_a` and the second element is the balance of `token_b`.
     pub fn get_balances(&self) -> (Decimal, Decimal) {
         (self.token_a, self.token_b)
     }
