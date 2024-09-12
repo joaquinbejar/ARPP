@@ -24,6 +24,8 @@ pub fn create_price_chart(
     prices: &[Decimal],
     p_refs: &[Decimal],
     file_name: &str,
+    alpha: Decimal,
+    beta: Decimal,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Create the drawing area
     let root = BitMapBackend::new(file_name, (800, 600)).into_drawing_area();
@@ -38,9 +40,10 @@ pub fn create_price_chart(
     let overall_min_price = cmp::min(min_price_prices, min_price_p_ref);
     let overall_max_price = cmp::max(max_price_prices, max_price_p_ref);
 
+    let title = format!("Price Evolution (alpha: {}, beta: {})", alpha, beta);
     // Build the chart with the combined min/max for y-axis
     let mut chart = ChartBuilder::on(&root)
-        .caption("Price Evolution", ("sans-serif", 50).into_font())
+        .caption(title, ("sans-serif", 30).into_font())
         .margin(5)
         .x_label_area_size(30)
         .y_label_area_size(30)
