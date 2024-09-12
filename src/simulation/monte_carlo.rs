@@ -7,27 +7,56 @@
 use crate::arpp::liquidity_pool::LiquidityPool;
 use crate::simulation::strategies::TradingStrategy;
 
-use rust_decimal::Decimal;
-use std::error::Error;
-use rust_decimal_macros::dec;
-use tracing::{debug, error, info};
-use crate::analysis::metrics::{ analyze_simulation_results, PoolMetrics, PoolMetricsStep, accumulate_pool_metrics};
-use crate::analysis::visualization::{create_price_chart, create_metrics_chart, create_simulation_analysis_chart};
+use crate::analysis::metrics::{
+    accumulate_pool_metrics, analyze_simulation_results, PoolMetrics, PoolMetricsStep,
+};
+use crate::analysis::visualization::{
+    create_metrics_chart, create_price_chart, create_simulation_analysis_chart,
+};
 use crate::arpp::formula::token_ratio;
 use crate::simulation::result::{run_timed_simulation, SimulationResult};
+use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
+use std::error::Error;
+use tracing::{debug, info};
 
+/// A struct representing a Monte Carlo Simulation for a liquidity pool with a specific trading strategy.
+///
+/// The `MonteCarloSimulation` struct is used to run a Monte Carlo simulation on a given liquidity pool,
+/// with a specified strategy and other parameters such as the number of iterations and steps per iteration.
+/// This simulation helps in analyzing the behavior of the liquidity pool under different market conditions
+/// by using probabilistic methods.
+///
+/// # Fields
+/// - `pool`: The liquidity pool on which the simulation is performed.
+/// - `iterations`: The number of iterations the simulation will run.
+/// - `steps_per_iteration`: The number of steps per iteration in the simulation.
+/// - `strategy`: The trading strategy used during the simulation.
+/// - `alpha`: A parameter that influences the reference price setting.
+/// - `beta`: A parameter that influences the reference price setting.
+/// - `price_history`: A vector that records the price history during the simulation.
+/// - `metrics_history`: A vector that records various metrics of the pool during the simulation.
+///
 pub struct MonteCarloSimulation {
     pool: LiquidityPool,
     iterations: usize,
     steps_per_iteration: usize,
     strategy: Box<dyn TradingStrategy>,
     price_history: Vec<Decimal>,
-    reference_price_history: Vec<Decimal>,
     metrics_history: Vec<PoolMetrics>,
     alpha: Decimal,
     beta: Decimal,
 }
 
+/// A struct representing a Monte Carlo Simulation for a liquidity pool with a specific trading strategy.
+///
+/// # Methods
+/// - `new`: Constructs a new `MonteCarloSimulation` instance.
+/// - `run`: Runs the Monte Carlo simulation with the given strategy.
+/// - `add_liquidity_if_needed`: Adds liquidity to the pool if it falls below a certain threshold.
+/// - `get_price_history`: Returns the price history recorded during the simulation.
+/// - `get_metrics_history`: Returns the metrics history recorded during the simulation.
+/// - `get_final_pool`: Returns the final state of the liquidity pool after the simulation.
 impl MonteCarloSimulation {
     pub fn new(
         pool: LiquidityPool,
@@ -43,7 +72,6 @@ impl MonteCarloSimulation {
             steps_per_iteration,
             strategy,
             price_history: Vec::new(),
-            reference_price_history: Vec::new(),
             metrics_history: Vec::new(),
             alpha,
             beta,
@@ -93,7 +121,7 @@ impl MonteCarloSimulation {
                 self.add_liquidity_if_needed()?;
 
                 if let Err(e) = self.strategy.execute(&mut self.pool, current_price).await {
-                    error!("Strategy execution error: {}", e);
+                    debug!("Strategy execution error: {}", e);
                 }
             }
 
@@ -117,19 +145,20 @@ impl MonteCarloSimulation {
 
     /// Adds liquidity to the pool if it falls below a certain threshold.
     fn add_liquidity_if_needed(&mut self) -> Result<(), Box<dyn Error>> {
-
-        let min_liquidity = Decimal::new(1000, 0);  // Minimum liquidity for both currencies
+        let min_liquidity = Decimal::new(1000, 0); // Minimum liquidity for both currencies
         let token_a_liquidity = self.pool.get_balances().0;
         let token_b_liquidity = self.pool.get_balances().1;
 
         if token_a_liquidity < min_liquidity {
             let amount_a_to_add = min_liquidity - token_a_liquidity;
-            self.pool.add_liquidity(amount_a_to_add, Decimal::new(10, 0))?;
+            self.pool
+                .add_liquidity(amount_a_to_add, Decimal::new(10, 0))?;
             debug!("Adding liquidity to token A: {}", amount_a_to_add);
         }
         if token_b_liquidity < min_liquidity {
             let amount_b_to_add = min_liquidity - token_b_liquidity;
-            self.pool.add_liquidity(Decimal::new(10, 0), amount_b_to_add)?;
+            self.pool
+                .add_liquidity(Decimal::new(10, 0), amount_b_to_add)?;
             debug!("Adding liquidity to token B: {}", amount_b_to_add);
         }
 
@@ -149,6 +178,32 @@ impl MonteCarloSimulation {
     }
 }
 
+/**
+ * Executes a Monte Carlo simulation for a trading strategy.
+ *
+ * This function creates an initial liquidity pool and runs a Monte Carlo simulation
+ * for the specified number of iterations and steps. It uses the provided trading strategy
+ * and initial token balances to perform the simulation.
+ *
+ * After the simulation completes, metrics such as average price change, average liquidity
+ * change, maximum and minimum prices, price volatility, liquidity depth, trading volume,
+ * and impermanent loss are calculated and logged. An analysis of these results is also performed
+ * to evaluate price stability, average price impact, and liquidity efficiency.
+ *
+ * Additionally, this function generates and saves charts visualizing the price history,
+ * metrics history, and analysis results.
+ *
+ * # Parameters
+ * - `strategy`: The trading strategy to be evaluated, boxed as a dynamic trait object.
+ * - `iterations`: The number of iterations to run in the simulation.
+ * - `steps`: The number of steps to simulate in each iteration.
+ * - `initial_token_a`: The initial balance of token A in the liquidity pool.
+ * - `initial_token_b`: The initial balance of token B in the liquidity pool.
+ *
+ * # Returns
+ * - `Result<(), Box<dyn Error>>`: Returns `Ok` if the simulation completes successfully,
+ *   or an error if something goes wrong.
+ */
 #[allow(dead_code)]
 async fn run_monte_carlo(
     strategy: Box<dyn TradingStrategy>,
@@ -160,23 +215,28 @@ async fn run_monte_carlo(
     let initial_pool = LiquidityPool::new(
         initial_token_a,
         initial_token_b,
-        Decimal::ONE,  // p_ref
-        Decimal::new(5, 1),  // alpha (0.5)
-        Decimal::ONE,  // beta
+        Decimal::ONE,       // p_ref
+        Decimal::new(5, 1), // alpha (0.5)
+        Decimal::ONE,       // beta
     );
     let alpha = Decimal::new(1, 1);
     let beta = Decimal::new(1, 2);
-    let mut simulation = MonteCarloSimulation::new(initial_pool.clone(),
-                                                   iterations,
-                                                   steps,
-                                                   strategy,
-                                                   alpha,
-                                                   beta);
+    let mut simulation = MonteCarloSimulation::new(
+        initial_pool.clone(),
+        iterations,
+        steps,
+        strategy,
+        alpha,
+        beta,
+    );
     let (result, duration) = run_timed_simulation(&mut simulation).await?;
 
     info!("Simulation completed in {:?}", duration);
     info!("Average price change: {}", result.average_price_change);
-    info!("Average liquidity change: {}", result.average_liquidity_change);
+    info!(
+        "Average liquidity change: {}",
+        result.average_liquidity_change
+    );
     info!("Maximum price: {}", result.max_price);
     info!("Minimum price: {}", result.min_price);
 
@@ -188,7 +248,6 @@ async fn run_monte_carlo(
     info!("Trading Volume: {}", pool_metrics.trading_volume);
     info!("Impermanent Loss: {}", pool_metrics.impermanent_loss);
 
-
     let analysis = analyze_simulation_results(&result);
     info!("Simulation Analysis:");
     info!("Price Stability: {}", analysis.price_stability);
@@ -198,7 +257,13 @@ async fn run_monte_carlo(
     // Generate visualizations
     let alpha = dec!(0.2);
     let beta = dec!(5);
-    create_price_chart(&simulation.get_price_history(), &result.metrics.get_p_ref(), "price_chart.png", alpha, beta)?;
+    create_price_chart(
+        &simulation.get_price_history(),
+        &result.metrics.get_p_ref(),
+        "price_chart.png",
+        alpha,
+        beta,
+    )?;
     create_metrics_chart(&simulation.get_metrics_history(), "metrics_chart.png")?;
     create_simulation_analysis_chart(&analysis, "analysis_chart.png", alpha, beta)?;
 
@@ -210,9 +275,9 @@ async fn run_monte_carlo(
 #[cfg(test)]
 mod tests_monte_carlo {
     use super::*;
+    use rust_decimal_macros::dec;
     use std::future::Future;
     use std::pin::Pin;
-    use rust_decimal_macros::dec;
     use tokio;
 
     // Mock implementation of TradingStrategy
@@ -223,7 +288,7 @@ mod tests_monte_carlo {
             &'a self,
             pool: &'a mut LiquidityPool,
             _: Decimal,
-        ) -> Pin<Box<dyn Future<Output=Result<(), Box<dyn Error>>> + 'a>> {
+        ) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn Error>>> + 'a>> {
             Box::pin(async move {
                 let amount_a = Decimal::new(10, 0);
                 let amount_b = Decimal::new(5, 0);
@@ -246,12 +311,8 @@ mod tests_monte_carlo {
         );
 
         let strategy = Box::new(MockTradingStrategy {});
-        let mut simulation = MonteCarloSimulation::new(initial_pool,
-                                                       10,
-                                                       5,
-                                                       strategy,
-                                                       dec!(1),
-                                                       dec!(1));
+        let mut simulation =
+            MonteCarloSimulation::new(initial_pool, 10, 5, strategy, dec!(1), dec!(1));
         let result = simulation.run().await.unwrap();
 
         assert!(result.average_price_change > Decimal::ZERO);
@@ -271,12 +332,8 @@ mod tests_monte_carlo {
         );
 
         let strategy = Box::new(MockTradingStrategy {});
-        let mut simulation = MonteCarloSimulation::new(initial_pool,
-                                                       10,
-                                                       5,
-                                                       strategy,
-                                                       dec!(1),
-                                                       dec!(1));
+        let mut simulation =
+            MonteCarloSimulation::new(initial_pool, 10, 5, strategy, dec!(1), dec!(1));
         let (result, _duration) = run_timed_simulation(&mut simulation).await.unwrap();
 
         assert!(result.average_price_change > Decimal::ZERO);
@@ -297,12 +354,8 @@ mod tests_monte_carlo {
         );
 
         let strategy = Box::new(MockTradingStrategy {});
-        let mut simulation = MonteCarloSimulation::new(initial_pool,
-                                                       100,
-                                                       50,
-                                                       strategy,
-                                                       dec!(1),
-                                                       dec!(1));
+        let mut simulation =
+            MonteCarloSimulation::new(initial_pool, 100, 50, strategy, dec!(1), dec!(1));
         let result = simulation.run().await.unwrap();
 
         assert!(result.average_price_change > Decimal::ZERO);
@@ -322,12 +375,8 @@ mod tests_monte_carlo {
         );
 
         let strategy = Box::new(MockTradingStrategy {});
-        let mut simulation = MonteCarloSimulation::new(initial_pool,
-                                                       10,
-                                                       5,
-                                                       strategy,
-                                                       dec!(1),
-                                                       dec!(1));
+        let mut simulation =
+            MonteCarloSimulation::new(initial_pool, 10, 5, strategy, dec!(1), dec!(1));
         let result = simulation.run().await.unwrap();
 
         assert!(result.average_price_change >= Decimal::ZERO);
@@ -347,12 +396,8 @@ mod tests_monte_carlo {
         );
 
         let strategy = Box::new(MockTradingStrategy {});
-        let mut simulation = MonteCarloSimulation::new(initial_pool,
-                                                       0,
-                                                       0,
-                                                       strategy,
-                                                       dec!(1),
-                                                       dec!(1));
+        let mut simulation =
+            MonteCarloSimulation::new(initial_pool, 0, 0, strategy, dec!(1), dec!(1));
         let result = simulation.run().await.unwrap();
 
         assert_eq!(result.average_price_change, Decimal::ZERO);
@@ -372,12 +417,8 @@ mod tests_monte_carlo {
         );
 
         let strategy = Box::new(MockTradingStrategy {});
-        let mut simulation = MonteCarloSimulation::new(initial_pool,
-                                                       10_000,
-                                                       5,
-                                                       strategy,
-                                                       dec!(1),
-                                                       dec!(1));
+        let mut simulation =
+            MonteCarloSimulation::new(initial_pool, 10_000, 5, strategy, dec!(1), dec!(1));
         let result = simulation.run().await.unwrap();
 
         assert!(result.average_price_change > Decimal::ZERO);
