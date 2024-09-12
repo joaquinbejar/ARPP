@@ -5,19 +5,23 @@
 ******************************************************************************/
 
 use crate::arpp::formula::{arpp, token_ratio};
+use crate::simulation::random_walk::random_walk_price;
 use rust_decimal::Decimal;
 use std::error::Error;
-use tracing::{info, trace};
-use crate::simulation::random_walk::random_walk_price;
+use tracing::{debug, trace};
 
-/// The `LiquidityPool` struct represents a liquidity pool in a decentralized finance (DeFi) context.
+/// Implementation of a Liquidity Pool for token trading.
+///
+/// This struct provides functionalities to manage a liquidity pool involving
+/// token swaps, adding and removing liquidity, and retrieving current prices
+/// and balances of the tokens.
 ///
 /// # Fields
-/// - `token_a` (Decimal): The amount of the first token in the pool.
-/// - `token_b` (Decimal): The amount of the second token in the pool.
-/// - `p_ref` (Decimal): The reference price for the pool.
-/// - `alpha` (Decimal): A parameter that could represent a weight or coefficient in a specific formula or algorithm.
-/// - `beta` (Decimal): Another parameter that could represent a weight or coefficient in a different formula or algorithm.
+/// - `token_a`: The amount of Token A in the pool.
+/// - `token_b`: The amount of Token B in the pool.
+/// - `p_ref`: A reference price for the swap calculation.
+/// - `alpha`: A parameter for the swap calculation.
+/// - `beta`: Another parameter for the swap calculation.
 ///
 #[derive(Debug, Clone)]
 pub struct LiquidityPool {
@@ -28,7 +32,32 @@ pub struct LiquidityPool {
     beta: Decimal,
 }
 
+/// Implementation of a Liquidity Pool for token trading.
+///
+/// This struct provides functionalities to manage a liquidity pool involving
+/// token swaps, adding and removing liquidity, and retrieving current prices
+/// and balances of the tokens.
+///
+/// # Fields
+/// - `token_a`: The amount of Token A in the pool.
+/// - `token_b`: The amount of Token B in the pool.
+/// - `p_ref`: A reference price for the swap calculation.
+/// - `alpha`: A parameter for the swap calculation.
+/// - `beta`: Another parameter for the swap calculation.
+///
 impl LiquidityPool {
+    /// Creates a new `LiquidityPool` with the specified initial balances and parameters.
+    ///
+    /// # Arguments
+    /// - `token_a`: Initial amount of Token A.
+    /// - `token_b`: Initial amount of Token B.
+    /// - `p_ref`: Reference price for the swap calculation.
+    /// - `alpha`: Parameter for the swap calculation.
+    /// - `beta`: Parameter for the swap calculation.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of `LiquidityPool`.
     pub fn new(
         token_a: Decimal,
         token_b: Decimal,
@@ -45,26 +74,17 @@ impl LiquidityPool {
         }
     }
 
-    /// Adds liquidity to the liquidity pool by increasing the amounts of tokens A and B.
-    ///
-    /// The function takes two `Decimal` values representing the amounts of tokens A and B
-    /// to be added to the liquidity pool. It updates the state of `self` to reflect the
-    /// added amounts.
+    /// Adds liquidity to the pool.
     ///
     /// # Arguments
     ///
-    /// * `amount_a` - The amount of token A to be added. Must be greater than zero.
-    /// * `amount_b` - The amount of token B to be added. Must be greater than zero.
+    /// - `amount_a`: Amount of Token A to add.
+    /// - `amount_b`: Amount of Token B to add.
     ///
     /// # Returns
     ///
-    /// * `Result<(), Box<dyn Error>>` - Returns `Ok(())` if the operation is successful.
-    ///   Returns an error if either `amount_a` or `amount_b` is less than or equal to zero.
-    ///
-    /// # Errors
-    ///
-    /// This function will return an error if either `amount_a` or `amount_b` is not positive.
-    ///
+    /// A `Result` which is `Ok` if the addition was successful, or an `Err` if
+    /// the amounts are not positive.
     pub fn add_liquidity(
         &mut self,
         amount_a: Decimal,
@@ -80,22 +100,15 @@ impl LiquidityPool {
 
     /// Removes liquidity from the pool.
     ///
-    /// # Parameters
+    /// # Arguments
     ///
-    /// - `amount_a`: The amount of token A to remove. Must be a positive value.
-    /// - `amount_b`: The amount of token B to remove. Must be a positive value.
+    /// - `amount_a`: Amount of Token A to remove.
+    /// - `amount_b`: Amount of Token B to remove.
     ///
     /// # Returns
     ///
-    /// A `Result` indicating the success (`Ok`) or failure (`Err`) of the operation.
-    ///
-    /// # Errors
-    ///
-    /// This function will return an error in the following cases:
-    ///
-    /// - If `amount_a` or `amount_b` are non-positive.
-    /// - If the pool does not have sufficient liquidity to meet the requested amounts.
-    ///
+    /// A `Result` which is `Ok` if the removal was successful, or an `Err` if
+    /// the liquidity is insufficient or amounts are not positive.
     pub fn remove_liquidity(
         &mut self,
         amount_a: Decimal,
@@ -112,28 +125,16 @@ impl LiquidityPool {
         Ok(())
     }
 
-    /// Swaps a specified amount of token A to token B based on a given price mechanism.
+    /// Swaps an amount of Token A for Token B.
     ///
-    /// # Parameters
+    /// # Arguments
     ///
-    /// - `amount_a`: The amount of token A to be swapped to token B. Must be a positive value greater
-    /// than zero and should not exceed the available `token_a` liquidity.
+    /// - `amount_a`: Amount of Token A to swap.
     ///
     /// # Returns
     ///
-    /// - `Ok(Decimal)`: The resulting amount of token B received in the swap.
-    /// - `Err(Box<dyn Error>)`: An error indicating one of the following issues:
-    ///   - The specified amount of token A is non-positive.
-    ///   - Insufficient liquidity of token A.
-    ///   - Insufficient liquidity of token B for the swap.
-    ///
-    /// # Errors
-    ///
-    /// This function will return an error if:
-    /// - `amount_a` is less than or equal to zero.
-    /// - `amount_a` is greater than the available liquidity of `token_a`.
-    /// - The resulting amount of token B for the swap exceeds the available liquidity of `token_b`.
-    ///
+    /// A `Result` which contains the amount of Token B received if successful,
+    /// or an `Err` if the liquidity is insufficient or the amount is not positive.
     pub fn swap_a_to_b(&mut self, amount_a: Decimal) -> Result<Decimal, Box<dyn Error>> {
         if amount_a <= Decimal::ZERO {
             return Err("Amount must be positive".into());
@@ -142,21 +143,37 @@ impl LiquidityPool {
             return Err("Insufficient liquidity of A".into());
         }
 
-        let initial_k = self.token_a * self.token_b;
-        self.token_a += amount_a;
+        // Calculate the amount of B to deliver
+        let amount_b = arpp(
+            self.p_ref,
+            self.alpha,
+            self.beta,
+            token_ratio(self.token_a, self.token_b),
+        ) * amount_a;
 
-        // Calculate new token_b to maintain k
-        self.token_b = initial_k / self.token_a;
-
-        let amount_b = self.token_b - (initial_k / (self.token_a - amount_a));
-
-        if amount_b <= Decimal::ZERO {
+        debug!(
+            "Swapping {} tokens from A to B, current A {} current B {}, amount of B to delive {}",
+            amount_a, self.token_a, self.token_b, amount_b
+        );
+        if amount_b <= Decimal::ZERO || amount_b > self.token_b {
             return Err("Insufficient liquidity to perform swap".into());
         }
+        self.token_a += amount_a;
+        self.token_b -= amount_b;
 
         Ok(amount_b)
     }
 
+    /// Swaps an amount of Token B for Token A.
+    ///
+    /// # Arguments
+    ///
+    /// - `amount_b`: Amount of Token B to swap.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` which contains the amount of Token A received if successful,
+    /// or an `Err` if the liquidity is insufficient or the amount is not positive.
     pub fn swap_b_to_a(&mut self, amount_b: Decimal) -> Result<Decimal, Box<dyn Error>> {
         if amount_b <= Decimal::ZERO {
             return Err("Amount must be positive".into());
@@ -165,39 +182,72 @@ impl LiquidityPool {
             return Err("Insufficient liquidity of B".into());
         }
 
-        let initial_k = self.token_a * self.token_b;
-        self.token_b += amount_b;
+        // Calculate the amount of A to deliver
+        let amount_a = arpp(
+            self.p_ref,
+            self.alpha,
+            self.beta,
+            token_ratio(self.token_a, self.token_b),
+        ) * amount_b;
 
-        // Calculate new token_a to maintain k
-        self.token_a = initial_k / self.token_b;
-
-        let amount_a = self.token_a - (initial_k / (self.token_b - amount_b));
-
-        if amount_a <= Decimal::ZERO {
-            return Err("Insufficient liquidity to perform swap".into());
+        debug!(
+            "Swapping {} tokens from B to A, current B {} current A {}, amount of A to delive {}",
+            amount_b, self.token_b, self.token_a, amount_a
+        );
+        if amount_a <= Decimal::ZERO || amount_a > self.token_a {
+            let error_msg = format!(
+                "Insufficient liquidity to perform swap Token A {:.4}, Token B {:.4}, A needed {:.4}",
+                self.token_a, self.token_b, amount_a
+            );
+            return Err(error_msg.into());
         }
+
+        self.token_a -= amount_a;
+        self.token_b += amount_b;
 
         Ok(amount_a)
     }
 
-    /// Calculates the price based on the ratio of `token_b` to `token_a`
-    /// and adjusts it using the parameters `p_ref`, `alpha`, and `beta`.
+    /// Retrieves the current price based on the pool's token ratios and parameters.
     ///
     /// # Returns
     ///
     /// A `Decimal` representing the calculated price.
-    ///
     pub fn get_price(&mut self) -> Decimal {
-        let r = token_ratio(self.token_a,  self.token_b);
+        let r = token_ratio(self.token_a, self.token_b);
         let price = arpp(self.p_ref, self.alpha, self.beta, r);
-        trace!("P_ref: {:.2}, Price: {:.2}, Alpha: {:}, Beta: {}, R: {:.2}", self.p_ref, price, self.alpha, self.beta, r);
+        trace!(
+            "P_ref: {:.2}, Price: {:.2}, Alpha: {:}, Beta: {}, R: {:.2}",
+            self.p_ref,
+            price,
+            self.alpha,
+            self.beta,
+            r
+        );
         price
     }
 
-    pub(crate) fn set_p_ref(&mut self, alpha:Decimal, beta:Decimal) {
+    /// Updates the `p_ref` field by applying a random walk to its current value using the given `alpha` and `beta` parameters.
+    ///
+    /// # Parameters
+    /// - `alpha`: The alpha value to use in the random walk calculation.
+    /// - `beta`: The beta value to use in the random walk calculation.
+    ///
+    /// This function modifies the `p_ref` field of the current instance by applying the `random_walk_price` function
+    /// to its current value along with the specified `alpha` and `beta` parameters.
+    ///
+    pub(crate) fn set_p_ref(&mut self, alpha: Decimal, beta: Decimal) {
         self.p_ref = random_walk_price(self.p_ref, alpha, beta);
     }
 
+    /// Retrieves the reference pressure (`p_ref`) stored in the structure.
+    ///
+    /// # Returns
+    ///
+    /// * `Decimal` - The reference pressure as a `Decimal`.
+    ///
+    /// Note: Ensure that the mutable reference to the structure is maintained because
+    /// this method requires mutable access.
     pub(crate) fn get_p_ref(&mut self) -> Decimal {
         self.p_ref
     }
@@ -226,6 +276,7 @@ impl LiquidityPool {
 #[cfg(test)]
 mod tests_liquidity_pool {
     use super::*;
+    use crate::utils::logger::setup_logger;
     use rust_decimal_macros::dec;
     use tracing::debug;
 
@@ -292,18 +343,20 @@ mod tests_liquidity_pool {
 
     #[test]
     fn test_swap_a_to_b() {
+        setup_logger();
         let mut pool = create_standard_pool();
         let initial_balances = pool.get_balances();
-        debug!("Initial balances: {:?}", initial_balances);
 
-        let amount_a_to_swap = dec!(100);
+        let amount_a_to_swap = dec!(10);
         let result = pool.swap_a_to_b(amount_a_to_swap);
         assert!(result.is_ok());
         let amount_b = result.unwrap();
 
         let (token_a, token_b) = pool.get_balances();
-        debug!("Final balances: ({}, {})", token_a, token_b);
-        debug!("Amount of B received: {}", amount_b);
+        debug!(
+            "Final balances: ({}, {}), Amount of B received: {}",
+            token_a, token_b, amount_b
+        );
 
         assert!(token_a > initial_balances.0, "Token A should increase");
         assert!(token_b < initial_balances.1, "Token B should decrease");
@@ -351,8 +404,10 @@ mod tests_liquidity_pool {
         let amount_a = result.unwrap();
 
         let (token_a, token_b) = pool.get_balances();
-        debug!("Final balances: ({}, {})", token_a, token_b);
-        debug!("Amount of A received: {}", amount_a);
+        debug!(
+            "Final balances: ({}, {}), Amount of A received: {}",
+            token_a, token_b, amount_a
+        );
 
         assert!(token_a < initial_balances.0, "Token A should decrease");
         assert!(token_b > initial_balances.1, "Token B should increase");
@@ -446,6 +501,8 @@ mod tests_liquidity_pool {
 #[cfg(test)]
 mod tests_liquidity_pool_bis {
     use super::*;
+    use crate::utils::logger::setup_logger;
+    use assert_approx_eq::assert_approx_eq;
     use rust_decimal_macros::dec;
     use tracing::debug;
 
@@ -687,7 +744,10 @@ mod tests_liquidity_pool_bis {
         let mut pool = create_custom_pool(dec!(1000), dec!(1000), dec!(1), dec!(0.5), dec!(1));
         let result = pool.swap_a_to_b(dec!(1001));
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().to_string(), "Insufficient liquidity");
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Insufficient liquidity of A"
+        );
     }
 
     #[test]
@@ -722,6 +782,7 @@ mod tests_liquidity_pool_bis {
 
     #[test]
     fn test_swap_with_extreme_price_reference() {
+        setup_logger();
         let mut pool =
             create_custom_pool(dec!(1000), dec!(1000), dec!(1000000), dec!(0.5), dec!(1));
 
@@ -736,7 +797,7 @@ mod tests_liquidity_pool_bis {
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
-            "Insufficient liquidity for swap"
+            "Insufficient liquidity to perform swap"
         );
 
         // Test small A to B swap (should succeed)
@@ -753,37 +814,28 @@ mod tests_liquidity_pool_bis {
         );
 
         // Test B to A swap (should succeed but with very small return)
-        let b_to_a_result = pool.swap_b_to_a(dec!(1));
-        debug!("B to A swap result: {:?}", b_to_a_result);
+        let b_to_a_result = pool.swap_b_to_a(dec!(0.0001));
+        debug!(
+            "B to A swap result: {:?}Balances after B to A swap: {:?}",
+            b_to_a_result,
+            pool.get_balances()
+        );
         assert!(b_to_a_result.is_ok());
         let received_a = b_to_a_result.unwrap();
         debug!("Received from B to A swap: {}", received_a);
-        assert!(
-            received_a < dec!(0.000002),
-            "Should receive very small amount of A for 1 token B"
-        );
+        assert_approx_eq!(received_a, dec!(100.0500500833), dec!(0.00000001));
 
         // Verify final state
         let (final_a, final_b) = pool.get_balances();
         let final_price = pool.get_price();
-        debug!("Final state:");
-        debug!("Balances: ({}, {})", final_a, final_b);
-        debug!("Price: {}", final_price);
+        debug!(
+            "Final state: Balances: ({:.4}, {:.4}) Price: {:.4}",
+            final_a, final_b, final_price
+        );
 
-        // The changes are extremely small due to the extreme price
-        assert!(
-            (final_a - dec!(1000)).abs() < dec!(0.000001),
-            "A balance should change very little"
-        );
-        assert!(
-            (final_b - dec!(1000)).abs() < dec!(0.000001),
-            "B balance should change very little"
-        );
-        assert_ne!(
-            final_price,
-            dec!(1000000),
-            "Price should change slightly after swaps"
-        );
+        assert_approx_eq!(final_a, dec!(899.9499509), dec!(0.000001));
+        assert_approx_eq!(final_b, dec!(999.000100), dec!(0.000001));
+        assert_approx_eq!(final_price, dec!(950586.85345855), dec!(0.000001));
 
         // Additional checks to understand the behavior
         debug!("Change in A balance: {}", final_a - dec!(1000));
