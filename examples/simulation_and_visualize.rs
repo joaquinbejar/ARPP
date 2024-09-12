@@ -45,10 +45,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = simulation.run().await?;
 
     info!("Simulation completed");
-    info!("Average price change: {}", result.average_price_change);
-    info!("Average liquidity change: {}", result.average_liquidity_change);
-    info!("Max price: {}", result.max_price);
-    info!("Min price: {}", result.min_price);
+    info!("Average price change: {:.4}", result.average_price_change);
+    info!("Average liquidity change: {:.4}", result.average_liquidity_change);
+    info!("Max price: {:.4}", result.max_price);
+    info!("Min price: {:.4}", result.min_price);
 
 
     let price_history = result.metrics.get_prices();
@@ -63,19 +63,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let final_pool = simulation.get_final_pool();
     let pool_metrics = result.clone().metrics;
     let analysis = analyze_simulation_results(&result);
-    create_simulation_analysis_chart(&analysis, "draws/simulation_analysis_chart.png")?;
+    create_simulation_analysis_chart(&analysis, "draws/simulation_analysis_chart.png", alpha, beta)?;
     info!("Simulation analysis chart created: draws/simulation_analysis_chart.png");
 
     info!("\nFinal Pool Metrics:");
-    info!("Price Volatility: {}", pool_metrics.price_volatility);
-    info!("Liquidity Depth: {}", pool_metrics.liquidity_depth);
-    info!("Trading Volume: {}", pool_metrics.trading_volume);
-    info!("Impermanent Loss: {}", pool_metrics.impermanent_loss);
+    info!("Price Volatility: {:.4}", pool_metrics.price_volatility);
+    info!("Liquidity Depth: {:.4}", pool_metrics.liquidity_depth);
+    info!("Trading Volume: {:.4}", pool_metrics.trading_volume);
+    info!("Impermanent Loss: {:.4}", pool_metrics.impermanent_loss);
 
     info!("\nSimulation Analysis:");
-    info!("Price Stability: {}", analysis.price_stability);
-    info!("Average Price Impact: {}", analysis.average_price_impact);
-    info!("Liquidity Efficiency: {}", analysis.liquidity_efficiency);
+    info!("Price Stability: {:.4}", analysis.price_stability);
+    info!("Average Price Impact: {:.4}", analysis.average_price_impact);
+    info!("Liquidity Efficiency: {:.4}", analysis.liquidity_efficiency);
 
     Ok(())
 }
