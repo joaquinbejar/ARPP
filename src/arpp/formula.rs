@@ -83,9 +83,10 @@ pub(crate) fn token_ratio(token_a: Decimal, token_b: Decimal) -> Decimal {
 #[cfg(test)]
 mod tests_arpp {
     use super::*;
+    use crate::utils::logger::setup_logger;
     use assert_approx_eq::assert_approx_eq;
     use rust_decimal_macros::dec;
-    use tracing::debug;
+    use tracing::{debug, info};
 
     #[test]
     fn test_equilibrium() {
@@ -252,18 +253,20 @@ mod tests_arpp {
 
     #[test]
     fn test_price() {
-        let p_ref = dec!( 101.06);
-        let alpha = dec!(0.5);
-        let beta = dec!(1);
-        let r = dec!(5.52);
+        setup_logger();
+        let p_ref = dec!(101.06);
+        let alpha = dec!(0.1);
+        let beta = dec!(0.1);
+        let r1 = dec!(5.52);
+        let r2 = dec!(1.1);
 
-        let price1 = arpp(p_ref, alpha, beta, r);
-        let price2 = arpp(p_ref, alpha, beta, r);
+        let price1 = arpp(p_ref, alpha, beta, r1);
+        let price2 = arpp(p_ref, alpha, beta, r2);
 
-        println!("Price: {}", price1);
-        println!("Price: {}", price2);
+        info!("Price: {}", price1);
+        info!("Price: {}", price2);
 
-        assert_eq!(price1, price2);
-        // assert_approx_eq!(price1, dec!(101.06), dec!(10));
+        assert_approx_eq!(price1, dec!(105.350157507), Decimal::new(1, 9));
+        assert_approx_eq!(price2, dec!(101.161056631), Decimal::new(1, 9));
     }
 }
