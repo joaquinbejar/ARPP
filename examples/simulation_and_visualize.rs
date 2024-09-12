@@ -18,7 +18,7 @@ use tracing::info;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     setup_logger();
-    let alpha = dec!(0.2);
+    let alpha = dec!(0.8);
     let beta = dec!(5);
 
     let initial_pool = LiquidityPool::new(
@@ -29,8 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         beta,         // beta
     );
 
-    // let strategy = Box::new(RandomStrategy::new(0.5, dec!(10)));
-    let strategy = Box::new(MeanReversionStrategy::new(dec!(0.1), dec!(100)));
+    let strategy = Box::new(MeanReversionStrategy::new(dec!(0.0004), dec!(0.22)));
     let iterations = 5000;
     let steps_per_iteration = 2;
 

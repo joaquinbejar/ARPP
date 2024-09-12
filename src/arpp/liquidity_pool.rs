@@ -8,7 +8,7 @@ use crate::arpp::formula::{arpp, token_ratio};
 use crate::simulation::random_walk::random_walk_price;
 use rust_decimal::Decimal;
 use std::error::Error;
-use tracing::{debug, trace};
+use tracing::debug;
 
 /// Implementation of a Liquidity Pool for token trading.
 ///
@@ -90,11 +90,17 @@ impl LiquidityPool {
         amount_a: Decimal,
         amount_b: Decimal,
     ) -> Result<(), Box<dyn Error>> {
-        if amount_a <= Decimal::ZERO || amount_b <= Decimal::ZERO {
+        debug!(
+            "Added liquidity: Token A {:.2}, Token B {:.2}",
+            self.token_a, self.token_b
+        );
+
+        if amount_a < Decimal::ZERO || amount_b < Decimal::ZERO {
             return Err("Amounts must be positive".into());
         }
         self.token_a += amount_a;
         self.token_b += amount_b;
+
         Ok(())
     }
 
@@ -216,13 +222,9 @@ impl LiquidityPool {
     pub fn get_price(&mut self) -> Decimal {
         let r = token_ratio(self.token_a, self.token_b);
         let price = arpp(self.p_ref, self.alpha, self.beta, r);
-        trace!(
+        debug!(
             "P_ref: {:.2}, Price: {:.2}, Alpha: {:}, Beta: {}, R: {:.2}",
-            self.p_ref,
-            price,
-            self.alpha,
-            self.beta,
-            r
+            self.p_ref, price, self.alpha, self.beta, r
         );
         price
     }
@@ -300,10 +302,10 @@ mod tests_liquidity_pool {
     }
 
     #[test]
-    fn test_add_liquidity_zero_amount() {
+    fn test_add_liquidity_neg_amount() {
         let mut pool = create_standard_pool();
-        assert!(pool.add_liquidity(dec!(0), dec!(100)).is_err());
-        assert!(pool.add_liquidity(dec!(100), dec!(0)).is_err());
+        assert!(pool.add_liquidity(dec!(-1), dec!(100)).is_err());
+        assert!(pool.add_liquidity(dec!(100), dec!(-1)).is_err());
     }
 
     #[test]

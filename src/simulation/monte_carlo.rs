@@ -145,20 +145,17 @@ impl MonteCarloSimulation {
 
     /// Adds liquidity to the pool if it falls below a certain threshold.
     fn add_liquidity_if_needed(&mut self) -> Result<(), Box<dyn Error>> {
-        let min_liquidity = Decimal::new(1000, 0); // Minimum liquidity for both currencies
         let token_a_liquidity = self.pool.get_balances().0;
         let token_b_liquidity = self.pool.get_balances().1;
 
-        if token_a_liquidity < min_liquidity {
-            let amount_a_to_add = min_liquidity - token_a_liquidity;
-            self.pool
-                .add_liquidity(amount_a_to_add, Decimal::new(10, 0))?;
+        if token_a_liquidity < (token_b_liquidity / dec!(2)) {
+            let amount_a_to_add = (token_b_liquidity / dec!(2)) - token_a_liquidity;
+            self.pool.add_liquidity(amount_a_to_add, dec!(0))?;
             debug!("Adding liquidity to token A: {}", amount_a_to_add);
         }
-        if token_b_liquidity < min_liquidity {
-            let amount_b_to_add = min_liquidity - token_b_liquidity;
-            self.pool
-                .add_liquidity(Decimal::new(10, 0), amount_b_to_add)?;
+        if token_b_liquidity < (token_a_liquidity / dec!(2)) {
+            let amount_b_to_add = (token_a_liquidity / dec!(2)) - token_b_liquidity;
+            self.pool.add_liquidity(dec!(0), amount_b_to_add)?;
             debug!("Adding liquidity to token B: {}", amount_b_to_add);
         }
 
