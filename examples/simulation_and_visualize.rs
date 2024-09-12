@@ -30,8 +30,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let strategy = Box::new(MeanReversionStrategy::new(dec!(0.0004), dec!(0.22)));
-    let iterations = 5000;
-    let steps_per_iteration = 2;
+    let iterations = 1000;
+    let steps_per_iteration = 1;
 
     let mut simulation = MonteCarloSimulation::new(
         initial_pool.clone(),
@@ -45,13 +45,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = simulation.run().await?;
 
     info!("Simulation completed");
-    info!("Average price change: {:.4}", result.average_price_change);
+    info!("\tAverage price change: {:.4}", result.average_price_change);
     info!(
-        "Average liquidity change: {:.4}",
+        "\tAverage liquidity change: {:.4}",
         result.average_liquidity_change
     );
-    info!("Max price: {:.4}", result.max_price);
-    info!("Min price: {:.4}", result.min_price);
+    info!("\tMax price: {:.4}", result.max_price);
+    info!("\tMin price: {:.4}", result.min_price);
 
     let price_history = result.metrics.get_prices();
     let p_ref_history = result.metrics.get_p_ref();
@@ -78,16 +78,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     info!("Simulation analysis chart created: draws/simulation_analysis_chart.png");
 
-    info!("\nFinal Pool Metrics:");
-    info!("Price Volatility: {:.4}", pool_metrics.price_volatility);
-    info!("Liquidity Depth: {:.4}", pool_metrics.liquidity_depth);
-    info!("Trading Volume: {:.4}", pool_metrics.trading_volume);
-    info!("Impermanent Loss: {:.4}", pool_metrics.impermanent_loss);
+    info!("Final Pool Metrics:");
+    info!("\tPrice Volatility: {:.4}", pool_metrics.price_volatility);
+    info!("\tLiquidity Depth: {:.4}", pool_metrics.liquidity_depth);
+    info!("\tTrading Volume: {:.4}", pool_metrics.trading_volume);
+    info!("\tImpermanent Loss: {:.4}", pool_metrics.impermanent_loss);
 
-    info!("\nSimulation Analysis:");
-    info!("Price Stability: {:.4}", analysis.price_stability);
-    info!("Average Price Impact: {:.4}", analysis.average_price_impact);
-    info!("Liquidity Efficiency: {:.4}", analysis.liquidity_efficiency);
+    info!("Simulation Analysis:");
+    info!("\tPrice Stability: {:.4}", analysis.price_stability);
+    info!("\tAverage Price Impact: {:.4}", analysis.average_price_impact);
+    info!("\tLiquidity Efficiency: {:.4}", analysis.liquidity_efficiency);
 
     Ok(())
 }
