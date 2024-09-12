@@ -110,12 +110,17 @@ pub fn create_metrics_chart(metrics: &[PoolMetrics], file_name: &str) -> Result<
     Ok(())
 }
 
-pub fn create_simulation_analysis_chart(analysis: &SimulationAnalysis, file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn create_simulation_analysis_chart(analysis: &SimulationAnalysis,
+                                        file_name: &str,
+                                        alpha: Decimal,
+                                        beta: Decimal,
+) -> Result<(), Box<dyn std::error::Error>> {
     let root = BitMapBackend::new(file_name, (800, 600)).into_drawing_area();
     root.fill(&WHITE)?;
 
+    let title = format!("Simulation Analysis (alpha: {}, beta: {})", alpha, beta);
     let mut chart = ChartBuilder::on(&root)
-        .caption("Simulation Analysis", ("sans-serif", 50).into_font())
+        .caption(title, ("sans-serif", 30).into_font())
         .margin(5)
         .x_label_area_size(30)
         .y_label_area_size(30)

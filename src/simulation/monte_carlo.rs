@@ -200,189 +200,189 @@ async fn run_monte_carlo(
     let beta = dec!(5);
     create_price_chart(&simulation.get_price_history(), &result.metrics.get_p_ref(), "price_chart.png", alpha, beta)?;
     create_metrics_chart(&simulation.get_metrics_history(), "metrics_chart.png")?;
-    create_simulation_analysis_chart(&analysis, "analysis_chart.png")?;
+    create_simulation_analysis_chart(&analysis, "analysis_chart.png", alpha, beta)?;
 
     info!("Charts have been generated: price_chart.png, metrics_chart.png, analysis_chart.png");
 
     Ok(())
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use std::future::Future;
-//     use std::pin::Pin;
-//     use rust_decimal_macros::dec;
-//     use tokio;
-//
-//     // Mock implementation of TradingStrategy
-//     struct MockTradingStrategy {}
-//
-//     impl TradingStrategy for MockTradingStrategy {
-//         fn execute<'a>(
-//             &'a self,
-//             pool: &'a mut LiquidityPool,
-//             _: Decimal,
-//         ) -> Pin<Box<dyn Future<Output=Result<(), Box<dyn Error>>> + 'a>> {
-//             Box::pin(async move {
-//                 let amount_a = Decimal::new(10, 0);
-//                 let amount_b = Decimal::new(5, 0);
-//                 pool.add_liquidity(amount_a, amount_b)?;
-//                 let swapped_b = pool.swap_a_to_b(amount_a)?;
-//                 pool.swap_b_to_a(swapped_b)?;
-//                 Ok(())
-//             })
-//         }
-//     }
-//
-//     #[tokio::test]
-//     async fn test_monte_carlo_simulation() {
-//         let initial_pool = LiquidityPool::new(
-//             Decimal::new(1000, 0), // token_a
-//             Decimal::new(500, 0),  // token_b
-//             Decimal::new(1, 0),    // p_ref
-//             Decimal::new(1, 0),    // alpha
-//             Decimal::new(1, 0),    // beta
-//         );
-//
-//         let strategy = Box::new(MockTradingStrategy {});
-//         let mut simulation = MonteCarloSimulation::new(initial_pool,
-//                                                        10,
-//                                                        5,
-//                                                        strategy,
-//                                                        dec!(1),
-//                                                        dec!(1));
-//         let result = simulation.run().await.unwrap();
-//
-//         assert!(result.average_price_change > Decimal::ZERO);
-//         assert!(result.average_liquidity_change > Decimal::ZERO);
-//         assert!(result.max_price > Decimal::ZERO);
-//         assert!(result.min_price > Decimal::ZERO);
-//     }
-//
-//     #[tokio::test]
-//     async fn test_run_timed_simulation() {
-//         let initial_pool = LiquidityPool::new(
-//             Decimal::new(1000, 0), // token_a
-//             Decimal::new(500, 0),  // token_b
-//             Decimal::new(1, 0),    // p_ref
-//             Decimal::new(1, 0),    // alpha
-//             Decimal::new(1, 0),    // beta
-//         );
-//
-//         let strategy = Box::new(MockTradingStrategy {});
-//         let mut simulation = MonteCarloSimulation::new(initial_pool,
-//                                                        10,
-//                                                        5,
-//                                                        strategy,
-//                                                        dec!(1),
-//                                                        dec!(1));
-//         let (result, _duration) = run_timed_simulation(&mut simulation).await.unwrap();
-//
-//         assert!(result.average_price_change > Decimal::ZERO);
-//         assert!(result.average_liquidity_change > Decimal::ZERO);
-//         assert!(result.max_price > Decimal::ZERO);
-//         assert!(result.min_price > Decimal::ZERO);
-//         // assert!(duration.as_secs() >= 0);
-//     }
-//
-//     #[tokio::test]
-//     async fn test_monte_carlo_multiple_iterations() {
-//         let initial_pool = LiquidityPool::new(
-//             Decimal::new(1000, 0), // token_a
-//             Decimal::new(500, 0),  // token_b
-//             Decimal::new(1, 0),    // p_ref
-//             Decimal::new(1, 0),    // alpha
-//             Decimal::new(1, 0),    // beta
-//         );
-//
-//         let strategy = Box::new(MockTradingStrategy {});
-//         let mut simulation = MonteCarloSimulation::new(initial_pool,
-//                                                        100,
-//                                                        50,
-//                                                        strategy,
-//                                                        dec!(1),
-//                                                        dec!(1));
-//         let result = simulation.run().await.unwrap();
-//
-//         assert!(result.average_price_change > Decimal::ZERO);
-//         assert!(result.average_liquidity_change > Decimal::ZERO);
-//         assert!(result.max_price > Decimal::ZERO);
-//         assert!(result.min_price > Decimal::ZERO);
-//     }
-//
-//     #[tokio::test]
-//     async fn test_monte_carlo_with_low_liquidity() {
-//         let initial_pool = LiquidityPool::new(
-//             Decimal::new(1, 0), // token_a
-//             Decimal::new(1, 0), // token_b
-//             Decimal::new(1, 0), // p_ref
-//             Decimal::new(1, 0), // alpha
-//             Decimal::new(1, 0), // beta
-//         );
-//
-//         let strategy = Box::new(MockTradingStrategy {});
-//         let mut simulation = MonteCarloSimulation::new(initial_pool,
-//                                                        10,
-//                                                        5,
-//                                                        strategy,
-//                                                        dec!(1),
-//                                                        dec!(1));
-//         let result = simulation.run().await.unwrap();
-//
-//         assert!(result.average_price_change >= Decimal::ZERO);
-//         assert!(result.average_liquidity_change >= Decimal::ZERO);
-//         assert!(result.max_price > Decimal::ZERO);
-//         assert!(result.min_price > Decimal::ZERO);
-//     }
-//
-//     #[tokio::test]
-//     async fn test_monte_carlo_zero_iterations() {
-//         let initial_pool = LiquidityPool::new(
-//             Decimal::new(1000, 0), // token_a
-//             Decimal::new(500, 0),  // token_b
-//             Decimal::new(1, 0),    // p_ref
-//             Decimal::new(1, 0),    // alpha
-//             Decimal::new(1, 0),    // beta
-//         );
-//
-//         let strategy = Box::new(MockTradingStrategy {});
-//         let mut simulation = MonteCarloSimulation::new(initial_pool,
-//                                                        0,
-//                                                        0,
-//                                                        strategy,
-//                                                        dec!(1),
-//                                                        dec!(1));
-//         let result = simulation.run().await.unwrap();
-//
-//         assert_eq!(result.average_price_change, Decimal::ZERO);
-//         assert_eq!(result.average_liquidity_change, Decimal::ZERO);
-//         assert_eq!(result.max_price, Decimal::ZERO);
-//         assert_eq!(result.min_price, Decimal::ZERO);
-//     }
-//
-//     #[tokio::test]
-//     async fn test_monte_carlo_high_iteration_count() {
-//         let initial_pool = LiquidityPool::new(
-//             Decimal::new(1000, 0), // token_a
-//             Decimal::new(500, 0),  // token_b
-//             Decimal::new(1, 0),    // p_ref
-//             Decimal::new(1, 0),    // alpha
-//             Decimal::new(1, 0),    // beta
-//         );
-//
-//         let strategy = Box::new(MockTradingStrategy {});
-//         let mut simulation = MonteCarloSimulation::new(initial_pool,
-//                                                        10_000,
-//                                                        5,
-//                                                        strategy,
-//                                                        dec!(1),
-//                                                        dec!(1));
-//         let result = simulation.run().await.unwrap();
-//
-//         assert!(result.average_price_change > Decimal::ZERO);
-//         assert!(result.average_liquidity_change > Decimal::ZERO);
-//         assert!(result.max_price > Decimal::ZERO);
-//         assert!(result.min_price > Decimal::ZERO);
-//     }
-// }
+#[cfg(test)]
+mod tests_monte_carlo {
+    use super::*;
+    use std::future::Future;
+    use std::pin::Pin;
+    use rust_decimal_macros::dec;
+    use tokio;
+
+    // Mock implementation of TradingStrategy
+    struct MockTradingStrategy {}
+
+    impl TradingStrategy for MockTradingStrategy {
+        fn execute<'a>(
+            &'a self,
+            pool: &'a mut LiquidityPool,
+            _: Decimal,
+        ) -> Pin<Box<dyn Future<Output=Result<(), Box<dyn Error>>> + 'a>> {
+            Box::pin(async move {
+                let amount_a = Decimal::new(10, 0);
+                let amount_b = Decimal::new(5, 0);
+                pool.add_liquidity(amount_a, amount_b)?;
+                let swapped_b = pool.swap_a_to_b(amount_a)?;
+                pool.swap_b_to_a(swapped_b)?;
+                Ok(())
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn test_monte_carlo_simulation() {
+        let initial_pool = LiquidityPool::new(
+            Decimal::new(1000, 0), // token_a
+            Decimal::new(500, 0),  // token_b
+            Decimal::new(1, 0),    // p_ref
+            Decimal::new(1, 0),    // alpha
+            Decimal::new(1, 0),    // beta
+        );
+
+        let strategy = Box::new(MockTradingStrategy {});
+        let mut simulation = MonteCarloSimulation::new(initial_pool,
+                                                       10,
+                                                       5,
+                                                       strategy,
+                                                       dec!(1),
+                                                       dec!(1));
+        let result = simulation.run().await.unwrap();
+
+        assert!(result.average_price_change > Decimal::ZERO);
+        assert!(result.average_liquidity_change > Decimal::ZERO);
+        assert!(result.max_price > Decimal::ZERO);
+        assert!(result.min_price > Decimal::ZERO);
+    }
+
+    #[tokio::test]
+    async fn test_run_timed_simulation() {
+        let initial_pool = LiquidityPool::new(
+            Decimal::new(1000, 0), // token_a
+            Decimal::new(500, 0),  // token_b
+            Decimal::new(1, 0),    // p_ref
+            Decimal::new(1, 0),    // alpha
+            Decimal::new(1, 0),    // beta
+        );
+
+        let strategy = Box::new(MockTradingStrategy {});
+        let mut simulation = MonteCarloSimulation::new(initial_pool,
+                                                       10,
+                                                       5,
+                                                       strategy,
+                                                       dec!(1),
+                                                       dec!(1));
+        let (result, _duration) = run_timed_simulation(&mut simulation).await.unwrap();
+
+        assert!(result.average_price_change > Decimal::ZERO);
+        assert!(result.average_liquidity_change > Decimal::ZERO);
+        assert!(result.max_price > Decimal::ZERO);
+        assert!(result.min_price > Decimal::ZERO);
+        // assert!(duration.as_secs() >= 0);
+    }
+
+    #[tokio::test]
+    async fn test_monte_carlo_multiple_iterations() {
+        let initial_pool = LiquidityPool::new(
+            Decimal::new(1000, 0), // token_a
+            Decimal::new(500, 0),  // token_b
+            Decimal::new(1, 0),    // p_ref
+            Decimal::new(1, 0),    // alpha
+            Decimal::new(1, 0),    // beta
+        );
+
+        let strategy = Box::new(MockTradingStrategy {});
+        let mut simulation = MonteCarloSimulation::new(initial_pool,
+                                                       100,
+                                                       50,
+                                                       strategy,
+                                                       dec!(1),
+                                                       dec!(1));
+        let result = simulation.run().await.unwrap();
+
+        assert!(result.average_price_change > Decimal::ZERO);
+        assert!(result.average_liquidity_change > Decimal::ZERO);
+        assert!(result.max_price > Decimal::ZERO);
+        assert!(result.min_price > Decimal::ZERO);
+    }
+
+    #[tokio::test]
+    async fn test_monte_carlo_with_low_liquidity() {
+        let initial_pool = LiquidityPool::new(
+            Decimal::new(1, 0), // token_a
+            Decimal::new(1, 0), // token_b
+            Decimal::new(1, 0), // p_ref
+            Decimal::new(1, 0), // alpha
+            Decimal::new(1, 0), // beta
+        );
+
+        let strategy = Box::new(MockTradingStrategy {});
+        let mut simulation = MonteCarloSimulation::new(initial_pool,
+                                                       10,
+                                                       5,
+                                                       strategy,
+                                                       dec!(1),
+                                                       dec!(1));
+        let result = simulation.run().await.unwrap();
+
+        assert!(result.average_price_change >= Decimal::ZERO);
+        assert!(result.average_liquidity_change >= Decimal::ZERO);
+        assert!(result.max_price > Decimal::ZERO);
+        assert!(result.min_price > Decimal::ZERO);
+    }
+
+    #[tokio::test]
+    async fn test_monte_carlo_zero_iterations() {
+        let initial_pool = LiquidityPool::new(
+            Decimal::new(1000, 0), // token_a
+            Decimal::new(500, 0),  // token_b
+            Decimal::new(1, 0),    // p_ref
+            Decimal::new(1, 0),    // alpha
+            Decimal::new(1, 0),    // beta
+        );
+
+        let strategy = Box::new(MockTradingStrategy {});
+        let mut simulation = MonteCarloSimulation::new(initial_pool,
+                                                       0,
+                                                       0,
+                                                       strategy,
+                                                       dec!(1),
+                                                       dec!(1));
+        let result = simulation.run().await.unwrap();
+
+        assert_eq!(result.average_price_change, Decimal::ZERO);
+        assert_eq!(result.average_liquidity_change, Decimal::ZERO);
+        assert_eq!(result.max_price, Decimal::ZERO);
+        assert_eq!(result.min_price, Decimal::ZERO);
+    }
+
+    #[tokio::test]
+    async fn test_monte_carlo_high_iteration_count() {
+        let initial_pool = LiquidityPool::new(
+            Decimal::new(1000, 0), // token_a
+            Decimal::new(500, 0),  // token_b
+            Decimal::new(1, 0),    // p_ref
+            Decimal::new(1, 0),    // alpha
+            Decimal::new(1, 0),    // beta
+        );
+
+        let strategy = Box::new(MockTradingStrategy {});
+        let mut simulation = MonteCarloSimulation::new(initial_pool,
+                                                       10_000,
+                                                       5,
+                                                       strategy,
+                                                       dec!(1),
+                                                       dec!(1));
+        let result = simulation.run().await.unwrap();
+
+        assert!(result.average_price_change > Decimal::ZERO);
+        assert!(result.average_liquidity_change > Decimal::ZERO);
+        assert!(result.max_price > Decimal::ZERO);
+        assert!(result.min_price > Decimal::ZERO);
+    }
+}
