@@ -3,22 +3,43 @@
    Email: jb@taunais.com
    Date: 10/9/24
 ******************************************************************************/
-use std::ops::Neg;
-use rust_decimal::{Decimal, MathematicalOps};
-use rust_decimal_macros::dec;
 use crate::arpp::liquidity_pool::LiquidityPool;
 use crate::simulation::result::SimulationResult;
+use rust_decimal::{Decimal, MathematicalOps};
+use rust_decimal_macros::dec;
+use std::ops::Neg;
 
-#[derive(Clone,Debug)]
+/// A structure representing the metrics at a particular step in a pool's lifetime.
+///
+/// This struct is used to capture and store various metrics related to the pool,
+/// such as prices, reference prices, balances of assets, and ratio at a specified step.
+///
+/// # Fields
+/// - `price`: The current price of the asset at this step.
+/// - `p_ref`: The reference price at this step.
+/// - `balances_a`: The current balance of asset `A` at this step.
+/// - `balances_b`: The current balance of asset `B` at this step.
+/// - `ratio`: The current ratio between the assets at this step.
+#[derive(Clone, Debug, PartialEq)]
 pub struct PoolMetricsStep {
     pub price: Decimal,
     pub p_ref: Decimal,
     pub balances_a: Decimal,
     pub balances_b: Decimal,
-    pub ratio: Decimal
+    pub ratio: Decimal,
 }
 
-#[derive(Clone, Default, Debug)]
+/// `PoolMetrics` is a structure that contains various metrics related to a liquidity pool.
+///
+/// The structure has the following fields:
+///
+/// - `steps`: A vector of `PoolMetricsStep` which records the state of the liquidity pool at various steps.
+/// - `price_volatility`: Accumulates the price volatility between different steps as a `Decimal`.
+/// - `liquidity_depth`: Represents the depth of liquidity in the pool as a `Decimal`.
+/// - `trading_volume`: Tracks the trading volume within the pool as a `Decimal`.
+/// - `impermanent_loss`: Accumulates the impermanent loss within the pool as a `Decimal`.
+///
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct PoolMetrics {
     pub steps: Vec<PoolMetricsStep>,
     pub price_volatility: Decimal,
@@ -26,7 +47,6 @@ pub struct PoolMetrics {
     pub trading_volume: Decimal,
     pub impermanent_loss: Decimal,
 }
-
 
 impl PoolMetrics {
     pub fn new() -> Self {
@@ -39,46 +59,104 @@ impl PoolMetrics {
         }
     }
 
+    /// Retrieves a list of prices from the steps of the current object.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<Decimal>` containing the prices extracted from each step.
+    ///
     pub fn get_prices(&self) -> Vec<Decimal> {
         self.steps.iter().map(|step| step.price).collect()
     }
 
+    /// Retrieves a vector of `Decimal` values representing the `p_ref` field
+    /// from each step in the struct.
+    ///
+    /// # Returns
+    /// A `Vec<Decimal>` containing the `p_ref` values from all steps.
+    ///
     pub fn get_p_ref(&self) -> Vec<Decimal> {
         self.steps.iter().map(|step| step.p_ref).collect()
     }
 
+    /// Retrieves a list of balances of type `Decimal` from the `steps` field.
+    ///
+    /// This function iterates over the `steps` collection and extracts the
+    /// `balances_a` field from each element, collecting them into a `Vec<Decimal>`.
+    ///
+    /// # Returns
+    ///
+    /// * `Vec<Decimal>` - A vector containing the `balances_a` balances from each step.
+    ///
     pub fn get_balances_a(&self) -> Vec<Decimal> {
         self.steps.iter().map(|step| step.balances_a).collect()
     }
 
+    /// Retrieves a vector containing the ratios from the `steps` field.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<Decimal>` which contains the ratios from each `step`.
+    ///
     pub fn get_balances_b(&self) -> Vec<Decimal> {
         self.steps.iter().map(|step| step.balances_b).collect()
     }
 
+    /// Retrieves a vector containing the ratios from the `steps` field.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<Decimal>` which contains the ratios from each `step`.
+    ///
     pub fn get_ratios(&self) -> Vec<Decimal> {
         self.steps.iter().map(|step| step.ratio).collect()
     }
 
-    /// Actualiza las métricas en cada paso de la simulación.
-    pub fn update_metrics(&mut self, current_step: &PoolMetricsStep, initial_step: &PoolMetricsStep) {
-        // Calcular volatilidad de precios entre este paso y el paso inicial
+    /// Updates the pool metrics by calculating various metrics between the current step
+    /// and the initial step. The metrics include price volatility, liquidity depth, trading volume,
+    /// and impermanent loss. These metrics are accumulated in the respective fields of the struct.
+    ///
+    /// # Arguments
+    ///
+    /// * `&mut self` - Mutable reference to the struct containing the metrics to be updated.
+    /// * `current_step` - A reference to the `PoolMetricsStep` struct that holds the current step data.
+    /// * `initial_step` - A reference to the `PoolMetricsStep` struct that holds the initial step data.
+    ///
+    /// The function performs the following updates:
+    /// - Accumulates the price volatility between the current and initial steps.
+    /// - Updates the liquidity depth based on the balances of assets A and B.
+    /// - Calculates and accumulates the trading volume between the current and initial steps.
+    /// - Updates and accumulates the impermanent loss comparing the current and initial balances.
+    ///
+    pub fn update_metrics(
+        &mut self,
+        current_step: &PoolMetricsStep,
+        initial_step: &PoolMetricsStep,
+    ) {
+        // Calculate price volatility between this step and the initial step
         let price_vol = calculate_price_volatility(current_step.price, initial_step.price);
         self.price_volatility += price_vol;
 
-        // Actualizar la profundidad de liquidez
-        self.liquidity_depth += calculate_liquidity_depth(current_step.balances_a, current_step.balances_b);
+        // Update liquidity depth
+        self.liquidity_depth +=
+            calculate_liquidity_depth(current_step.balances_a, current_step.balances_b);
 
-        // Calcular volumen de trading entre este paso y el paso inicial
+        // Calculate trading volume between this step and the initial step
         self.trading_volume += calculate_trading_volume(
-            current_step.balances_a, current_step.balances_b,
-            initial_step.balances_a, initial_step.balances_b
+            current_step.balances_a,
+            current_step.balances_b,
+            initial_step.balances_a,
+            initial_step.balances_b,
         );
 
-        // Actualizar la pérdida impermanente
+        // Update the impermanent loss
         self.impermanent_loss += calculate_impermanent_loss(
-            current_step.balances_a, current_step.balances_b,
-            initial_step.balances_a, initial_step.balances_b,
-            current_step.price, initial_step.price
+            current_step.balances_a,
+            current_step.balances_b,
+            initial_step.balances_a,
+            initial_step.balances_b,
+            current_step.price,
+            initial_step.price,
         );
     }
 }
@@ -93,7 +171,7 @@ pub fn accumulate_pool_metrics(
     let p_ref = pool.get_p_ref();
     let ratio = token_b / token_a;
 
-    // Crear el paso actual (PoolMetricsStep)
+    // Create the current step (PoolMetricsStep) based on the current pool state
     let current_step = PoolMetricsStep {
         price: current_price,
         p_ref,
@@ -102,13 +180,12 @@ pub fn accumulate_pool_metrics(
         ratio,
     };
 
-    // Insertar el nuevo paso en la lista de pasos
+    // Insert the new step into the step list
     metrics.steps.push(current_step.clone());
 
-    // Actualizar las métricas acumuladas basadas en el paso actual
+    // Update the accumulated metrics based on the current step
     metrics.update_metrics(&current_step, initial_step);
 }
-
 
 /// Calculates the price volatility given the current price and initial price.
 ///
@@ -200,7 +277,12 @@ fn calculate_liquidity_depth(token_a: Decimal, token_b: Decimal) -> Decimal {
 /// # Returns
 ///
 /// A `Decimal` value representing the total trading volume.
-fn calculate_trading_volume(token_a: Decimal, token_b: Decimal, initial_a: Decimal, initial_b: Decimal) -> Decimal {
+fn calculate_trading_volume(
+    token_a: Decimal,
+    token_b: Decimal,
+    initial_a: Decimal,
+    initial_b: Decimal,
+) -> Decimal {
     (token_a - initial_a).abs() + (token_b - initial_b).abs()
 }
 
@@ -233,12 +315,16 @@ fn calculate_impermanent_loss(
     initial_a: Decimal,
     initial_b: Decimal,
     current_price: Decimal,
-    initial_price: Decimal
+    initial_price: Decimal,
 ) -> Decimal {
     // Check for non-negative inputs
-    if token_a < Decimal::ZERO || token_b < Decimal::ZERO ||
-        initial_a < Decimal::ZERO || initial_b < Decimal::ZERO ||
-        current_price < Decimal::ZERO || initial_price < Decimal::ZERO {
+    if token_a < Decimal::ZERO
+        || token_b < Decimal::ZERO
+        || initial_a < Decimal::ZERO
+        || initial_b < Decimal::ZERO
+        || current_price < Decimal::ZERO
+        || initial_price < Decimal::ZERO
+    {
         return Decimal::ZERO; // Return 0 for invalid inputs
     }
 
@@ -345,14 +431,12 @@ pub struct SimulationAnalysis {
     pub liquidity_efficiency: Decimal,
 }
 
-
-
 #[cfg(test)]
 mod tests_price_volatility {
     use super::*;
+    use crate::utils::logger::setup_logger;
     use rust_decimal_macros::dec;
     use tracing::info;
-    use crate::utils::logger::setup_logger;
 
     fn test_price_volatility(current_price: Decimal, initial_price: Decimal) {
         let volatility = calculate_price_volatility(current_price, initial_price);
@@ -406,9 +490,9 @@ mod tests_price_volatility {
 #[cfg(test)]
 mod tests_calculate_impermanent_loss {
     use super::*;
+    use crate::utils::logger::setup_logger;
     use rust_decimal_macros::dec;
     use tracing::info;
-    use crate::utils::logger::setup_logger;
 
     fn test_impermanent_loss(
         token_a: Decimal,
@@ -416,9 +500,16 @@ mod tests_calculate_impermanent_loss {
         initial_a: Decimal,
         initial_b: Decimal,
         current_price: Decimal,
-        initial_price: Decimal
+        initial_price: Decimal,
     ) {
-        let loss = calculate_impermanent_loss(token_a, token_b, initial_a, initial_b, current_price, initial_price);
+        let loss = calculate_impermanent_loss(
+            token_a,
+            token_b,
+            initial_a,
+            initial_b,
+            current_price,
+            initial_price,
+        );
         info!(
             "Token A: {}, Token B: {}, Initial A: {}, Initial B: {}, Current Price: {}, Initial Price: {}, Impermanent Loss: {}",
             token_a, token_b, initial_a, initial_b, current_price, initial_price, loss
@@ -430,34 +521,83 @@ mod tests_calculate_impermanent_loss {
         setup_logger();
 
         // Normal case
-        test_impermanent_loss(dec!(90), dec!(110), dec!(100), dec!(100), dec!(1.1), dec!(1.0));
+        test_impermanent_loss(
+            dec!(90),
+            dec!(110),
+            dec!(100),
+            dec!(100),
+            dec!(1.1),
+            dec!(1.0),
+        );
 
         // No price change
-        test_impermanent_loss(dec!(100), dec!(100), dec!(100), dec!(100), dec!(1.0), dec!(1.0));
+        test_impermanent_loss(
+            dec!(100),
+            dec!(100),
+            dec!(100),
+            dec!(100),
+            dec!(1.0),
+            dec!(1.0),
+        );
 
         // Extreme price change
-        test_impermanent_loss(dec!(50), dec!(200), dec!(100), dec!(100), dec!(2.0), dec!(1.0));
+        test_impermanent_loss(
+            dec!(50),
+            dec!(200),
+            dec!(100),
+            dec!(100),
+            dec!(2.0),
+            dec!(1.0),
+        );
 
         // Zero initial price
-        test_impermanent_loss(dec!(100), dec!(100), dec!(100), dec!(100), dec!(1.0), dec!(0));
+        test_impermanent_loss(
+            dec!(100),
+            dec!(100),
+            dec!(100),
+            dec!(100),
+            dec!(1.0),
+            dec!(0),
+        );
 
         // Zero current price
-        test_impermanent_loss(dec!(100), dec!(100), dec!(100), dec!(100), dec!(0), dec!(1.0));
+        test_impermanent_loss(
+            dec!(100),
+            dec!(100),
+            dec!(100),
+            dec!(100),
+            dec!(0),
+            dec!(1.0),
+        );
 
         // Negative input
-        test_impermanent_loss(dec!(-100), dec!(100), dec!(100), dec!(100), dec!(1.0), dec!(1.0));
+        test_impermanent_loss(
+            dec!(-100),
+            dec!(100),
+            dec!(100),
+            dec!(100),
+            dec!(1.0),
+            dec!(1.0),
+        );
 
         // Very large numbers
-        test_impermanent_loss(dec!(1000000), dec!(1000000), dec!(1000000), dec!(1000000), dec!(2.0), dec!(1.0));
+        test_impermanent_loss(
+            dec!(1000000),
+            dec!(1000000),
+            dec!(1000000),
+            dec!(1000000),
+            dec!(2.0),
+            dec!(1.0),
+        );
     }
 }
 
 #[cfg(test)]
 mod tests_calculate_price_stability {
     use super::*;
+    use crate::utils::logger::setup_logger;
     use rust_decimal_macros::dec;
     use tracing::info;
-    use crate::utils::logger::setup_logger;
 
     fn test_stability(min: Decimal, max: Decimal) {
         let stability = calculate_price_stability(min, max);
@@ -467,21 +607,21 @@ mod tests_calculate_price_stability {
     #[test]
     fn test_price_stability() {
         setup_logger();
-        test_stability(dec!(0), dec!(0));     // Both prices zero
+        test_stability(dec!(0), dec!(0)); // Both prices zero
         test_stability(dec!(100), dec!(100)); // No price change
-        test_stability(dec!(90), dec!(110));  // Normal case
-        test_stability(dec!(0), dec!(100));   // Extreme change
-        test_stability(dec!(-10), dec!(10));  // Negative price
-        test_stability(dec!(110), dec!(90));  // Min greater than max
+        test_stability(dec!(90), dec!(110)); // Normal case
+        test_stability(dec!(0), dec!(100)); // Extreme change
+        test_stability(dec!(-10), dec!(10)); // Negative price
+        test_stability(dec!(110), dec!(90)); // Min greater than max
     }
 }
 
 #[cfg(test)]
 mod tests_calculate_liquidity_efficiency {
     use super::*;
+    use crate::utils::logger::setup_logger;
     use rust_decimal_macros::dec;
     use tracing::info;
-    use crate::utils::logger::setup_logger;
 
     fn test_efficiency(change: Decimal) {
         let efficiency = calculate_liquidity_efficiency(change);
@@ -491,11 +631,11 @@ mod tests_calculate_liquidity_efficiency {
     #[test]
     fn test_liquidity_efficiency() {
         setup_logger();
-        test_efficiency(dec!(0));       // Normal case: no change
-        test_efficiency(dec!(0.5));     // Normal case: positive change
-        test_efficiency(dec!(-0.5));    // Normal case: negative change
-        test_efficiency(dec!(-1));      // Extreme case: denominator would be zero
-        test_efficiency(dec!(100));     // Extreme case: very large positive change
-        test_efficiency(dec!(-0.99));   // Extreme case: negative change close to -1
+        test_efficiency(dec!(0)); // Normal case: no change
+        test_efficiency(dec!(0.5)); // Normal case: positive change
+        test_efficiency(dec!(-0.5)); // Normal case: negative change
+        test_efficiency(dec!(-1)); // Extreme case: denominator would be zero
+        test_efficiency(dec!(100)); // Extreme case: very large positive change
+        test_efficiency(dec!(-0.99)); // Extreme case: negative change close to -1
     }
 }
