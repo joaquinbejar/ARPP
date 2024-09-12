@@ -1,12 +1,12 @@
 /******************************************************************************
-    Author: Joaquín Béjar García
-    Email: jb@taunais.com 
-    Date: 10/9/24
- ******************************************************************************/
-use rust_decimal::Decimal;
+   Author: Joaquín Béjar García
+   Email: jb@taunais.com
+   Date: 10/9/24
+******************************************************************************/
 use rand::prelude::*;
 use rand_distr::{Distribution, Normal};
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
+use rust_decimal::Decimal;
 
 const MIN_PRICE: f64 = 0.1;
 /// Generates a new price based on a random walk model.
@@ -108,7 +108,8 @@ pub fn generate_multiple_random_walks(
 
     // Generate each sequence
     for _ in 0..num_sequences {
-        let sequence = generate_random_walk_sequence(initial_price, length, std_dev, std_dev_of_std_dev);
+        let sequence =
+            generate_random_walk_sequence(initial_price, length, std_dev, std_dev_of_std_dev);
         sequences.push(sequence);
     }
 
@@ -122,18 +123,18 @@ mod tests_random_walk_price {
 
     #[test]
     fn test_random_walk_price_increases() {
-        let last_price = Decimal::new(10000, 2);  // 100.00
-        let std_dev = Decimal::new(100, 2);       // 1.00
-        let std_dev_of_std_dev = Decimal::new(20, 2);  // 0.20
+        let last_price = Decimal::new(10000, 2); // 100.00
+        let std_dev = Decimal::new(100, 2); // 1.00
+        let std_dev_of_std_dev = Decimal::new(20, 2); // 0.20
         let new_price = random_walk_price(last_price, std_dev, std_dev_of_std_dev);
         assert!(new_price >= Decimal::ZERO);
     }
 
     #[test]
     fn test_random_walk_price_changes() {
-        let last_price = Decimal::new(10000, 2);  // 100.00
-        let std_dev = Decimal::new(100, 2);       // 1.00
-        let std_dev_of_std_dev = Decimal::new(20, 2);  // 0.20
+        let last_price = Decimal::new(10000, 2); // 100.00
+        let std_dev = Decimal::new(100, 2); // 1.00
+        let std_dev_of_std_dev = Decimal::new(20, 2); // 0.20
         let new_price = random_walk_price(last_price, std_dev, std_dev_of_std_dev);
         assert!(new_price != last_price);
     }
