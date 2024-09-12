@@ -9,7 +9,7 @@ use crate::simulation::strategies::TradingStrategy;
 
 use rust_decimal::Decimal;
 use std::error::Error;
-
+use rust_decimal_macros::dec;
 use tracing::{debug, error, info};
 use crate::analysis::metrics::{ analyze_simulation_results, PoolMetrics, PoolMetricsStep, accumulate_pool_metrics};
 use crate::analysis::visualization::{create_price_chart, create_metrics_chart, create_simulation_analysis_chart};
@@ -196,7 +196,9 @@ async fn run_monte_carlo(
     info!("Liquidity Efficiency: {}", analysis.liquidity_efficiency);
 
     // Generate visualizations
-    create_price_chart(&simulation.get_price_history(), &result.metrics.get_p_ref(), "price_chart.png")?;
+    let alpha = dec!(0.2);
+    let beta = dec!(5);
+    create_price_chart(&simulation.get_price_history(), &result.metrics.get_p_ref(), "price_chart.png", alpha, beta)?;
     create_metrics_chart(&simulation.get_metrics_history(), "metrics_chart.png")?;
     create_simulation_analysis_chart(&analysis, "analysis_chart.png")?;
 
