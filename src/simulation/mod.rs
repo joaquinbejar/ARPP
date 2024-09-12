@@ -5,6 +5,6 @@
 ******************************************************************************/
 
 pub mod monte_carlo;
-pub mod strategies;
 pub mod random_walk;
 pub(crate) mod result;
+pub mod strategies;
