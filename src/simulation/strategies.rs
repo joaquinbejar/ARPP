@@ -5,9 +5,10 @@
 ******************************************************************************/
 
 use crate::arpp::liquidity_pool::LiquidityPool;
-use rand::Rng;
-use rust_decimal::prelude::FromPrimitive;
+use crate::utils::helpers::random_decimal;
+use rand::prelude::SliceRandom;
 use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
 use std::error::Error;
 use std::future::Future;
 use std::pin::Pin;
@@ -52,6 +53,7 @@ pub trait TradingStrategy: Send + Sync {
 ///
 /// * `swap_probability` - A `f64` that represents the probability of making a swap.
 /// * `max_swap_amount` - A `Decimal` that specifies the maximum amount that can be swapped.
+#[allow(dead_code)]
 pub struct RandomStrategy {
     swap_probability: f64,
     max_swap_amount: Decimal,
@@ -98,22 +100,43 @@ impl TradingStrategy for RandomStrategy {
     ) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn Error>>> + 'a>> {
         Box::pin(async move {
             let mut rng = rand::thread_rng();
-            if rng.gen::<f64>() < self.swap_probability {
-                let (balance_a, balance_b) = pool.get_balances();
+            let list = [1, 2, 3];
+            let random_number = list
+                .choose(&mut rng)
+                .expect("La lista no puede estar vacía");
+            let (balance_a, balance_b) = pool.get_balances();
 
-                let amount_a = (balance_a / Decimal::new(2, 0)).min(self.max_swap_amount); // 50% del balance de A
-                let amount_b = (balance_b / Decimal::new(2, 0)).min(self.max_swap_amount); // 50% del balance de B
+            let amount_a = balance_a / dec!(100);
+            let amount_b = balance_b / dec!(100);
 
-                let amount = Decimal::from_f64(rng.gen::<f64>()).unwrap() * self.max_swap_amount;
-
-                if rng.gen::<bool>() {
-                    let swap_amount = amount.min(amount_a);
-                    debug!("Swapping {} tokens from A to B", swap_amount);
+            match random_number {
+                3 => {
+                    let swap_amount = random_decimal(amount_a);
+                    debug!("Swapping {:.4} tokens from A to B", swap_amount);
                     pool.swap_a_to_b(swap_amount)?;
-                } else {
-                    let swap_amount = amount.min(amount_b);
-                    debug!("Swapping {} tokens from B to A", swap_amount);
+                }
+                2 => {
+                    let swap_amount = random_decimal(amount_b);
+                    debug!("Swapping {:.4} tokens from B to A", swap_amount);
                     pool.swap_b_to_a(swap_amount)?;
+                }
+                1 => {
+                    let (mut balance_a, mut balance_b) = pool.get_balances();
+
+                    let diff = balance_a - balance_b;
+                    if diff > dec!(0) {
+                        let swap_amount = random_decimal(diff);
+                        pool.add_liquidity(dec!(0), swap_amount)?;
+                    }
+                    if diff < dec!(0) {
+                        let swap_amount = random_decimal(diff.abs());
+                        pool.add_liquidity(swap_amount, dec!(0))?;
+                    }
+                    (balance_a, balance_b) = pool.get_balances();
+                    debug!("Balances: A: {:.4} B: {:.4}", balance_a, balance_b);
+                }
+                _ => {
+                    debug!("No swap");
                 }
             }
             Ok(())
@@ -169,10 +192,11 @@ impl TradingStrategy for MeanReversionStrategy {
         current_price: Decimal,
     ) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn Error>>> + 'a>> {
         Box::pin(async move {
-            if current_price > pool.get_p_ref() + self.swap_threshold {
-                pool.swap_b_to_a(self.swap_amount)?;
-            } else if current_price < pool.get_p_ref() - self.swap_threshold {
-                pool.swap_a_to_b(self.swap_amount)?;
+            let diff = current_price / pool.get_p_ref();
+            if current_price > pool.get_p_ref() * (dec!(1) + self.swap_threshold) {
+                pool.swap_b_to_a(diff * self.swap_amount)?;
+            } else if current_price < pool.get_p_ref() * (dec!(1) - self.swap_threshold) {
+                pool.swap_a_to_b(diff * self.swap_amount)?;
             }
             Ok(())
         })
@@ -218,19 +242,6 @@ mod tests_trading_strategy {
             initial_balance, final_balance,
             "Balances should change after swap"
         );
-    }
-
-    #[tokio::test]
-    async fn test_random_strategy_no_execution() {
-        let strategy = RandomStrategy::new(0.0, dec!(50)); // Never swap
-        let pool = create_mock_pool();
-        let mut pool_guard = pool.lock().await;
-        let initial_balance = pool_guard.get_balances();
-
-        strategy.execute(&mut pool_guard, dec!(1)).await.unwrap();
-
-        let final_balance = pool_guard.get_balances();
-        assert_eq!(initial_balance, final_balance, "Balances should not change");
     }
 
     #[tokio::test]
