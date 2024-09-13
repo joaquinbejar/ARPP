@@ -48,9 +48,9 @@ pub struct RandomSimulationArgs {
     #[arg(long, default_value = "100")]
     steps: usize,
     #[arg(long, default_value = "0.5")]
-    swap_probability: f64,
+    balance_a: Decimal,
     #[arg(long, default_value = "10")]
-    max_swap_amount: Decimal,
+    balance_b: Decimal,
     #[arg(long, default_value = "1000")]
     initial_token_a: Decimal,
     #[arg(long, default_value = "1000")]
@@ -106,10 +106,7 @@ pub struct MeanReversionSimulationArgs {
 pub async fn run_simulation(cmd: &SimulationCommand) -> Result<(), Box<dyn Error>> {
     match cmd {
         SimulationCommand::Random(args) => {
-            let strategy = Box::new(RandomStrategy::new(
-                args.swap_probability,
-                args.max_swap_amount,
-            ));
+            let strategy = Box::new(RandomStrategy::new(args.balance_a, args.balance_b));
             run_monte_carlo(
                 strategy,
                 args.iterations,
@@ -220,12 +217,12 @@ mod tests_commands {
     #[tokio::test]
     async fn test_random_simulation_default_args() -> Result<(), Box<dyn Error>> {
         let args = RandomSimulationArgs {
-            iterations: 1000,
-            steps: 100,
-            swap_probability: 0.5,
-            max_swap_amount: Decimal::new(10, 0),
-            initial_token_a: Decimal::new(1000, 0),
-            initial_token_b: Decimal::new(1000, 0),
+            iterations: 100,
+            steps: 10,
+            balance_a: Decimal::new(10, 0),
+            balance_b: Decimal::new(10, 0),
+            initial_token_a: Decimal::new(10, 0),
+            initial_token_b: Decimal::new(10, 0),
         };
         let cmd = SimulationCommand::Random(args);
         let result = run_simulation(&cmd).await;
