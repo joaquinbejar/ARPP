@@ -55,44 +55,20 @@ pub trait TradingStrategy: Send + Sync {
 /// * `max_swap_amount` - A `Decimal` that specifies the maximum amount that can be swapped.
 #[allow(dead_code)]
 pub struct RandomStrategy {
-    swap_probability: f64,
-    max_swap_amount: Decimal,
+    balance_a: Decimal,
+    balance_b: Decimal,
 }
 
 impl RandomStrategy {
-    pub fn new(swap_probability: f64, max_swap_amount: Decimal) -> Self {
+    pub fn new(balance_a: Decimal, balance_b: Decimal) -> Self {
         Self {
-            swap_probability,
-            max_swap_amount,
+            balance_a,
+            balance_b,
         }
     }
 }
 
 impl TradingStrategy for RandomStrategy {
-    /// Executes a stochastic swap operation within a given liquidity pool.
-    ///
-    /// # Arguments
-    ///
-    /// * `self` - A reference to the struct or instance which implements this function.
-    /// * `pool` - A mutable reference to a `LiquidityPool` where the operation will take place.
-    /// * `_` - A `Decimal` value, not currently used in this function but reserved for future use.
-    ///
-    /// # Returns
-    ///
-    /// A `Pin<Box<dyn Future<Output = Result<(), Box<dyn Error>>> + 'a>>` representing the async result
-    /// of the operation. The operation may succeed or yield an error encapsulated in a `Box<dyn Error>`.
-    ///
-    /// # Details
-    ///
-    /// This function uses a randomly generated number to determine if a swap should occur based on a
-    /// predefined swap probability (`self.swap_probability`). If the swap condition is met, it
-    /// retrieves the balances of two assets within the pool and randomly decides to swap a certain
-    /// amount from one asset to the other. The swap amount is bounded by half of each balance or a
-    /// predefined maximum swap amount (`self.max_swap_amount`).
-    ///
-    /// During the operation, debug logs are generated to indicate the direction of the swap and the
-    /// amount being swapped.
-    ///
     fn execute<'a>(
         &'a self,
         pool: &'a mut LiquidityPool,
@@ -101,39 +77,49 @@ impl TradingStrategy for RandomStrategy {
         Box::pin(async move {
             let mut rng = rand::thread_rng();
             let list = [1, 2, 3];
-            let random_number = list
-                .choose(&mut rng)
-                .expect("La lista no puede estar vacía");
+            let random_number = list.choose(&mut rng).expect("Shouldn't be empty");
             let (balance_a, balance_b) = pool.get_balances();
-
-            let amount_a = balance_a / dec!(100);
-            let amount_b = balance_b / dec!(100);
+            let splitter = dec!(1000);
 
             match random_number {
-                3 => {
-                    let swap_amount = random_decimal(amount_a);
+                1 => {
+                    let swap_amount = random_decimal(balance_a) / splitter;
                     debug!("Swapping {:.4} tokens from A to B", swap_amount);
                     pool.swap_a_to_b(swap_amount)?;
                 }
                 2 => {
-                    let swap_amount = random_decimal(amount_b);
+                    let swap_amount = random_decimal(balance_b) / splitter;
                     debug!("Swapping {:.4} tokens from B to A", swap_amount);
                     pool.swap_b_to_a(swap_amount)?;
                 }
-                1 => {
-                    let (mut balance_a, mut balance_b) = pool.get_balances();
+                3 => {
+                    let (balance_a, balance_b) = pool.get_balances();
 
-                    let diff = balance_a - balance_b;
-                    if diff > dec!(0) {
-                        let swap_amount = random_decimal(diff);
+                    let sum = balance_a + balance_b;
+                    let ratio = balance_a / balance_b;
+
+                    let diff = (self.balance_a + self.balance_b - sum).abs();
+
+                    if ratio > dec!(1.05) {
+                        let swap_amount = self.balance_b * dec!(0.1);
+                        debug!("Adding liquidity to pool Token A: {:.4}", swap_amount);
                         pool.add_liquidity(dec!(0), swap_amount)?;
                     }
-                    if diff < dec!(0) {
-                        let swap_amount = random_decimal(diff.abs());
+                    if ratio < dec!(0.95) {
+                        let swap_amount = self.balance_a * dec!(0.1);
+                        debug!("Adding liquidity to pool Token B: {:.4}", swap_amount);
                         pool.add_liquidity(swap_amount, dec!(0))?;
                     }
-                    (balance_a, balance_b) = pool.get_balances();
-                    debug!("Balances: A: {:.4} B: {:.4}", balance_a, balance_b);
+
+                    if sum < (self.balance_a + self.balance_b) {
+                        debug!("Adding liquidity to pool: {:.4}", diff / dec!(2));
+                        pool.add_liquidity(diff / dec!(2), diff / dec!(2))?;
+                    }
+
+                    if sum > (self.balance_a + self.balance_b) {
+                        debug!("Removing liquidity from pool: {:.4}", diff / dec!(2));
+                        pool.remove_liquidity(diff / dec!(2), diff / dec!(2))?;
+                    }
                 }
                 _ => {
                     debug!("No swap");
@@ -223,14 +209,14 @@ mod tests_trading_strategy {
 
     #[tokio::test]
     async fn test_random_strategy_creation() {
-        let strategy = RandomStrategy::new(0.5, dec!(100));
-        assert_eq!(strategy.swap_probability, 0.5);
-        assert_eq!(strategy.max_swap_amount, dec!(100));
+        let strategy = RandomStrategy::new(dec!(100), dec!(100));
+        assert_eq!(strategy.balance_a, dec!(100));
+        assert_eq!(strategy.balance_b, dec!(100));
     }
 
     #[tokio::test]
     async fn test_random_strategy_execution() {
-        let strategy = RandomStrategy::new(1.0, dec!(50)); // Always swap
+        let strategy = RandomStrategy::new(dec!(100), dec!(50)); // Always swap
         let pool = create_mock_pool();
         let mut pool_guard = pool.lock().await;
         let initial_balance = pool_guard.get_balances();

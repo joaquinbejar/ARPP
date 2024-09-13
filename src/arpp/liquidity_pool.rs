@@ -193,7 +193,7 @@ impl LiquidityPool {
             self.p_ref,
             self.alpha,
             self.beta,
-            token_ratio(self.token_a, self.token_b),
+            token_ratio(self.token_b, self.token_a),
         ) * amount_b;
 
         debug!(
@@ -221,10 +221,11 @@ impl LiquidityPool {
     /// A `Decimal` representing the calculated price.
     pub fn get_price(&mut self) -> Decimal {
         let r = token_ratio(self.token_a, self.token_b);
+        // let r = dec!(1);
         let price = arpp(self.p_ref, self.alpha, self.beta, r);
         debug!(
-            "P_ref: {:.2}, Price: {:.2}, Alpha: {:}, Beta: {}, R: {:.2}",
-            self.p_ref, price, self.alpha, self.beta, r
+            "P_ref: {:.2}, Price: {:.2}, Alpha: {:}, Beta: {}, R: {:.2}, Token A: {:.2} Token B: {:.2}",
+            self.p_ref, price, self.alpha, self.beta, r, self.token_a, self.token_b
         );
         price
     }
@@ -825,7 +826,7 @@ mod tests_liquidity_pool_bis {
         assert!(b_to_a_result.is_ok());
         let received_a = b_to_a_result.unwrap();
         debug!("Received from B to A swap: {}", received_a);
-        assert_approx_eq!(received_a, dec!(100.0500500833), dec!(0.00000001));
+        assert_approx_eq!(received_a, dec!(99.94999996671), dec!(0.00000001));
 
         // Verify final state
         let (final_a, final_b) = pool.get_balances();
@@ -835,9 +836,9 @@ mod tests_liquidity_pool_bis {
             final_a, final_b, final_price
         );
 
-        assert_approx_eq!(final_a, dec!(899.9499509), dec!(0.000001));
+        assert_approx_eq!(final_a, dec!(900.05000103328329), dec!(0.000001));
         assert_approx_eq!(final_b, dec!(999.000100), dec!(0.000001));
-        assert_approx_eq!(final_price, dec!(950586.85345855), dec!(0.000001));
+        assert_approx_eq!(final_price, dec!(950636.44159899), dec!(0.000001));
 
         // Additional checks to understand the behavior
         debug!("Change in A balance: {}", final_a - dec!(1000));

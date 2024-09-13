@@ -256,9 +256,16 @@ fn calculate_price_volatility(current_price: Decimal, initial_price: Decimal) ->
 /// A `Decimal` representing the liquidity depth, which is the square root of the product of `token_a` and `token_b`.
 /// If the calculation fails, it returns a `Decimal` value of 0.
 ///
+// fn calculate_liquidity_depth(token_a: Decimal, token_b: Decimal) -> Decimal {
+//     let results = (token_a * token_b).sqrt();
+//     results.unwrap_or_else(|| dec!(0))
+// }
 fn calculate_liquidity_depth(token_a: Decimal, token_b: Decimal) -> Decimal {
-    let results = (token_a * token_b).sqrt();
-    results.unwrap_or_else(|| dec!(0))
+    // Use checked multiplication to prevent overflow
+    match token_a.checked_mul(token_b) {
+        Some(product) => product.sqrt().unwrap_or_else(|| dec!(0)), // Handle square root failure
+        None => dec!(0), // Handle multiplication overflow by returning 0
+    }
 }
 
 /// Calculates the trading volume of two tokens.
