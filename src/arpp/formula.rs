@@ -54,7 +54,7 @@ pub fn arpp(p_ref: Decimal, alpha: Decimal, beta: Decimal, r: Decimal) -> Decima
     // Convert to f64, calculate atan, and convert back to Decimal
     let angle_f64 = angle.to_f64().unwrap();
     let atan_value = Decimal::from_f64(libm::atan(angle_f64)).unwrap();
-    p_ref * (one + alpha * atan_value)
+    (p_ref * (one + alpha * atan_value)).max(Decimal::ZERO)
 }
 
 /// Calculates the ratio of two given decimal tokens.
@@ -268,5 +268,24 @@ mod tests_arpp {
 
         assert_approx_eq!(price1, dec!(105.350157507), Decimal::new(1, 9));
         assert_approx_eq!(price2, dec!(101.161056631), Decimal::new(1, 9));
+    }
+
+    #[test]
+    fn test_price_bis() {
+        setup_logger();
+        let p_ref = dec!(110.69);
+        let alpha = dec!(0.8);
+        let beta = dec!(5);
+        let r1 = dec!(1.05);
+        let r2 = dec!(1.1);
+
+        let price1 = arpp(p_ref, alpha, beta, r1);
+        let price2 = arpp(p_ref, alpha, beta, r2);
+
+        info!("Price: {}", price1);
+        info!("Price: {}", price2);
+
+        assert_approx_eq!(price1, dec!(132.383350577210), dec!(0.00001));
+        assert_approx_eq!(price2, dec!(151.7469230722393), Decimal::new(1, 9));
     }
 }
