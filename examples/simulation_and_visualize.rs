@@ -3,13 +3,14 @@
    Email: jb@taunais.com
    Date: 10/9/24
 ******************************************************************************/
+
 use arpp::analysis::metrics::analyze_simulation_results;
 use arpp::analysis::visualization::{
     create_metrics_chart, create_price_chart, create_simulation_analysis_chart,
 };
 use arpp::arpp::liquidity_pool::LiquidityPool;
 use arpp::simulation::monte_carlo::MonteCarloSimulation;
-use arpp::simulation::strategies::MeanReversionStrategy;
+use arpp::simulation::strategies::RandomStrategy;
 use arpp::utils::logger::setup_logger;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -18,8 +19,8 @@ use tracing::info;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     setup_logger();
-    let alpha = dec!(0.8);
-    let beta = dec!(5);
+    let alpha = dec!(0.5);
+    let beta = dec!(0.1);
 
     let initial_pool = LiquidityPool::new(
         dec!(100000), // token_a
@@ -29,9 +30,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         beta,         // beta
     );
 
-    let strategy = Box::new(MeanReversionStrategy::new(dec!(0.0004), dec!(0.22)));
-    let iterations = 1000;
-    let steps_per_iteration = 1;
+    let strategy = Box::new(RandomStrategy::new(
+        initial_pool.get_balances().0,
+        initial_pool.get_balances().1,
+    ));
+    let iterations = 10000;
+    let steps_per_iteration = 3;
 
     let mut simulation = MonteCarloSimulation::new(
         initial_pool.clone(),
@@ -86,8 +90,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Simulation Analysis:");
     info!("\tPrice Stability: {:.4}", analysis.price_stability);
-    info!("\tAverage Price Impact: {:.4}", analysis.average_price_impact);
-    info!("\tLiquidity Efficiency: {:.4}", analysis.liquidity_efficiency);
+    info!(
+        "\tAverage Price Impact: {:.4}",
+        analysis.average_price_impact
+    );
+    info!(
+        "\tLiquidity Efficiency: {:.4}",
+        analysis.liquidity_efficiency
+    );
 
     Ok(())
 }
