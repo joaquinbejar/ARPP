@@ -3,7 +3,6 @@
    Email: jb@taunais.com
    Date: 10/9/24
 ******************************************************************************/
-use rand::prelude::*;
 use rand_distr::{Distribution, Normal};
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use rust_decimal::Decimal;
@@ -32,7 +31,7 @@ pub fn random_walk_price(
     std_dev: Decimal,
     std_dev_of_std_dev: Decimal,
 ) -> Decimal {
-    let mut rng = thread_rng();
+    let mut rng = rand::rng();
 
     let std_dev_f64 = std_dev.to_f64().unwrap();
     let std_dev_of_std_dev_f64 = std_dev_of_std_dev.to_f64().unwrap();
