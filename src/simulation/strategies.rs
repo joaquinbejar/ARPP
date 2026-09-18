@@ -6,7 +6,7 @@
 
 use crate::arpp::liquidity_pool::LiquidityPool;
 use crate::utils::helpers::random_decimal;
-use rand::prelude::SliceRandom;
+use rand::prelude::IndexedRandom;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::error::Error;
@@ -75,7 +75,7 @@ impl TradingStrategy for RandomStrategy {
         _: Decimal,
     ) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn Error>>> + 'a>> {
         Box::pin(async move {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             let list = [1, 2, 3];
             let random_number = list.choose(&mut rng).expect("Shouldn't be empty");
             let (balance_a, balance_b) = pool.get_balances();
@@ -163,7 +163,7 @@ impl TradingStrategy for MeanReversionStrategy {
     /// # Arguments
     ///
     /// * `pool` - A mutable reference to the `LiquidityPool` instance where the swap
-    ///            operations will occur.
+    ///   operations will occur.
     /// * `current_price` - A `Decimal` representing the current price of the token.
     ///
     /// # Returns

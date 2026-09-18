@@ -4,7 +4,7 @@
    Date: 10/9/24
 ******************************************************************************/
 
-use rand::Rng;
+use rand::RngExt;
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -14,9 +14,9 @@ pub(crate) fn random_decimal(x: Decimal) -> Decimal {
     if x <= dec!(1) {
         return dec!(1);
     }
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let x_f64 = x.to_f64().expect("Error converting Decimal to f64");
-    let random_f64 = rng.gen_range(1.0..x_f64);
+    let random_f64 = rng.random_range(1.0..x_f64);
     Decimal::from_f64(random_f64).expect("Error converting f64 to Decimal")
 }
 
